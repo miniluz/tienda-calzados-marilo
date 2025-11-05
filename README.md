@@ -6,6 +6,12 @@
 
 Tener instalados [uv](https://docs.astral.sh/uv/getting-started/installation/) y [Docker](https://docs.docker.com/engine/install/).
 
+Monte las git hooks para garantizar la calidad:
+
+```
+uv run pre-commit install
+```
+
 Copie la envfile de desarrollo de ejemplo:
 
 ```
