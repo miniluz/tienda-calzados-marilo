@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: autoformat
+        name: Autoformat
+        entry: bash -c "uv run autoflake --in-place --remove-unused-variables --remove-all-unused-imports --recursive . && uv run black --line-length=120 ."
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: lint
+        name: Lint
+        entry: uv run flake8 --count --show-source --statistics
+        language: system
+        pass_filenames: true
+        types: [python]
+        stages: [pre-commit]
+
