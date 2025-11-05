@@ -22,7 +22,7 @@ envConfig: EnvConfig | None = None
 def getFromEnv(name: str) -> str:
     var = os.getenv(name)
 
-    if var == None:
+    if var is None:
         raise ValueError(f"The environment variable `${name}` is empty.")
 
     return var
@@ -35,7 +35,7 @@ def getBoolFromEnv(name: str) -> bool:
 def getEnvConfig() -> EnvConfig:
     global envConfig
 
-    if envConfig != None:
+    if envConfig is not None:
         return envConfig
 
     envConfig = EnvConfig(
