@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import user_passes_test
 from django.utils.decorators import method_decorator
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -9,7 +9,15 @@ from customer.models import Customer
 from .forms import CustomerEditForm, AdminCreateForm, AdminEditForm
 
 
-@method_decorator(staff_member_required, name="dispatch")
+def staff_required(function=None):
+    """Decorator that checks if the user is staff, redirecting to custom login if not authenticated"""
+    actual_decorator = user_passes_test(lambda u: u.is_staff, login_url="login", redirect_field_name="next")
+    if function:
+        return actual_decorator(function)
+    return actual_decorator
+
+
+@method_decorator(staff_required, name="dispatch")
 class AdminDashboardView(View):
     template_name = "management/dashboard.html"
 
@@ -23,7 +31,7 @@ class AdminDashboardView(View):
         )
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class CustomerListView(View):
     template_name = "management/customer_list.html"
 
@@ -32,7 +40,7 @@ class CustomerListView(View):
         return render(request, self.template_name, {"customers": customers})
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class CustomerDetailView(View):
     template_name = "management/customer_detail.html"
 
@@ -47,7 +55,7 @@ class CustomerDetailView(View):
         return render(request, self.template_name, {"user": user, "customer": customer})
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class CustomerEditView(View):
     template_name = "management/customer_edit.html"
 
@@ -114,7 +122,7 @@ class CustomerEditView(View):
         return render(request, self.template_name, {"form": form, "user": user, "customer": customer})
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class CustomerDeleteView(View):
     template_name = "management/customer_confirm_delete.html"
 
@@ -142,7 +150,7 @@ class CustomerDeleteView(View):
         return redirect("customer_list")
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class AdminListView(View):
     template_name = "management/admin_list.html"
 
@@ -151,7 +159,7 @@ class AdminListView(View):
         return render(request, self.template_name, {"admins": admins})
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class AdminCreateView(View):
     template_name = "management/admin_create.html"
 
@@ -173,7 +181,7 @@ class AdminCreateView(View):
         return render(request, self.template_name, {"form": form})
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class AdminEditView(View):
     template_name = "management/admin_edit.html"
 
@@ -219,7 +227,7 @@ class AdminEditView(View):
         return render(request, self.template_name, {"form": form, "admin_user": user})
 
 
-@method_decorator(staff_member_required, name="dispatch")
+@method_decorator(staff_required, name="dispatch")
 class AdminDeleteView(View):
     template_name = "management/admin_confirm_delete.html"
 
