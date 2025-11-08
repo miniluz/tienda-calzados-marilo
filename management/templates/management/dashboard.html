@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel de Administración - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">Panel de Administración</h2>
+        <p class="text-muted">Bienvenido al sistema de gestión de Calzados Marilo</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-people-fill"></i> Gestión de Clientes
+                </h5>
+                <p class="card-text text-muted">
+                    Administra los clientes registrados en el sistema. Visualiza, edita y elimina cuentas de clientes.
+                </p>
+                <div class="mt-auto">
+                    <p class="mb-2"><strong>Total de clientes:</strong> {{ customer_count }}</p>
+                    <a href="{% url 'customer_list' %}" class="btn btn-primary w-100">
+                        Ir a Gestión de Clientes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-shield-lock-fill"></i> Gestión de Administradores
+                </h5>
+                <p class="card-text text-muted">
+                    Administra las cuentas de administradores del sistema. Crea nuevos administradores y gestiona los existentes.
+                </p>
+                <div class="mt-auto">
+                    <p class="mb-2"><strong>Total de administradores:</strong> {{ admin_count }}</p>
+                    <a href="{% url 'admin_list' %}" class="btn btn-primary w-100">
+                        Ir a Gestión de Administradores
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
