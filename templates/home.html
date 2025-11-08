@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="display-4 mb-4">Bienvenido a Calzados Marilo</h1>
+
+    {% if user.is_authenticated %}
+        <div class="alert alert-success">
+            <h4>¡Hola, {{ user.first_name }} {{ user.last_name }}!</h4>
+            <p class="mb-0">Has iniciado sesión correctamente.</p>
+        </div>
+
+        {% if user.customer %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Información de tu perfil</h5>
+                </div>
+                <div class="card-body text-start">
+                    <p><strong>Usuario:</strong> {{ user.username }}</p>
+                    <p><strong>Email:</strong> {{ user.email }}</p>
+                    <p><strong>Nombre completo:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+                    <p><strong>Teléfono:</strong> {{ user.customer.phone_number }}</p>
+                    <p><strong>Dirección:</strong> {{ user.customer.address }}</p>
+                    <p><strong>Ciudad:</strong> {{ user.customer.city }}</p>
+                    <p><strong>Código postal:</strong> {{ user.customer.postal_code }}</p>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <p class="lead mb-4">
+            Tu tienda de confianza para calzado de calidad
+        </p>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+            <a href="{% url 'register' %}" class="btn btn-primary btn-lg px-4">Crear cuenta</a>
+            <a href="{% url 'login' %}" class="btn btn-outline-secondary btn-lg px-4">Iniciar sesión</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
