@@ -9,6 +9,7 @@ load_dotenv()
 class EnvConfig(NamedTuple):
     DJANGO_DEBUG: bool
     DJANGO_SECRET_KEY: str
+    ADMIN_PASSWORD: str
     POSTGRES_HOST: str
     POSTGRES_PORT: str
     POSTGRES_USER: str
@@ -41,6 +42,7 @@ def getEnvConfig() -> EnvConfig:
     envConfig = EnvConfig(
         DJANGO_DEBUG=getBoolFromEnv("DJANGO_DEBUG"),
         DJANGO_SECRET_KEY=getFromEnv("DJANGO_SECRET_KEY"),
+        ADMIN_PASSWORD=getFromEnv("ADMIN_PASSWORD"),
         POSTGRES_HOST=getFromEnv("POSTGRES_HOST"),
         POSTGRES_PORT=getFromEnv("POSTGRES_PORT"),
         POSTGRES_USER=getFromEnv("POSTGRES_USER"),
