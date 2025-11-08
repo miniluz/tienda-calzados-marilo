@@ -36,3 +36,13 @@ Y ejecute el servidor de desarrollo:
 ```
 uv run manage.py runserver
 ```
+
+## Cuentas de administración
+
+El sistema crea automáticamente una cuenta de administrador al iniciar la aplicación con las siguientes credenciales:
+
+- **Email/Usuario:** `admin@calzmarilo.es`
+- **Contraseña:** El valor de la variable de entorno `ADMIN_PASSWORD`
+
+Con esa cuenta más pueden ser creadas desde el panel de control para el resto de empleados.
+
