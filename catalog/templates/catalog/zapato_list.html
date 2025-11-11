@@ -193,6 +193,10 @@
 </head>
 <body>
 
+    <div class="top-bar">
+        CalzadosMarilo/Catalogo
+    </div>
+
     <header>
         <a href="{% url 'catalog:zapato_list' %}" class="logo">
             C a l z a d o s <br> M a r i l ó
@@ -213,13 +217,18 @@
 
         <div class="product-container">
             {% for zapato in zapatos %}
-            <div class="product-card {% if zapato.total_stock == 0 or zapato.total_stock|default:0 == 0 %}out-of-stock{% endif %}">
+            {% with total_stock=zapato.tallas.all|length %}
+            <div class="product-card {% if total_stock == 0 %}out-of-stock{% endif %}" data-product-id="{{ zapato.id }}" data-tallas='[{% for talla in zapato.tallas.all %}{"talla": {{ talla.talla }}, "stock": {{ talla.stock }}}{% if not forloop.last %},{% endif %}{% endfor %}]'>
                 <a href="{{ zapato.get_absolute_url }}">
-                    {% if zapato.image %}
-                        <img src="{{ zapato.imagen.imagen }}" alt="{{ zapato.name }}" >
-                    {% endif %}
+                    {% with zapato.imagenes.all|first as main_image %}
+                        {% if main_image %}
+                            <img src="{{ main_image.imagen }}" alt="{{ zapato.nombre }}">
+                        {% else %}
+                            <img src="https://via.placeholder.com/250x200.png?text=Sin+imagen" alt="Sin imagen">
+                        {% endif %}
+                    {% endwith %}
                     <h2>{{ zapato.nombre }}</h2>
-                    <p>{{ zapato.descripcion }}</p>
+                    <p>{{ zapato.descripcion|truncatewords:10 }}</p>
                     <p class="price">
                         {% if zapato.precioOferta %}
                             <span class="old-price">{{ zapato.precio }} €</span>
@@ -228,10 +237,13 @@
                             <span>{{ zapato.precio }} €</span>
                         {% endif %}
                     </p>
-                    <p class="status">{% if zapato.total_stock %}En stock ({{ zapato.total_stock }}){% else %}Fuera de stock{% endif %}</p>
-                    <button class="add-button" {% if not zapato.total_stock %}disabled{% endif %}>Añadir</button>
+                    <p class="status">
+                        <span class="stock-display" data-product-id="{{ zapato.id }}">Calculando...</span>
+                    </p>
+                    <button class="add-button">Añadir</button>
                 </a>
             </div>
+            {% endwith %}
         {% empty %}
             <p>No hay productos disponibles.</p>
         {% endfor %}
@@ -243,6 +255,38 @@
         <span>(+00) 999-999-999</span> |
         <span>CalzadosMariló@example.com</span>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const productCards = document.querySelectorAll('.product-card[data-tallas]');
+            
+            productCards.forEach(card => {
+                const tallaJson = card.getAttribute('data-tallas');
+                const tallas = JSON.parse(tallaJson);
+                let totalStock = 0;
+                
+                tallas.forEach(talla => {
+                    totalStock += talla.stock || 0;
+                });
+                
+                const stockDisplay = document.querySelector(`.stock-display[data-product-id="${card.getAttribute('data-product-id')}"]`);
+                const addButton = card.querySelector('.add-button');
+                
+                if (stockDisplay) {
+                    if (totalStock > 0) {
+                        stockDisplay.textContent = `En stock (${totalStock} unid.)`;
+                        stockDisplay.style.color = 'green';
+                    } else {
+                        stockDisplay.textContent = 'Fuera de stock';
+                        stockDisplay.style.color = 'red';
+                        if (addButton) {
+                            addButton.disabled = true;
+                        }
+                    }
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>
