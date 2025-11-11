@@ -24,8 +24,8 @@ class Zapato(models.Model):
     estaDestacado = models.BooleanField("Destacado", default=False)
     fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
     fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
-    marca = models.ForeignKey("Marca", on_delete=models.CASCADE, related_name="zapatos")
-    categoria = models.ManyToManyField("Categoria", related_name="zapatos", blank=True)
+    marca = models.ForeignKey("Marca", related_name="zapatos")
+    categoria = models.ForeignKey("Categoria", related_name="zapatos", blank=True, null=True)
 
     class Meta:
         ordering = ["-created"]

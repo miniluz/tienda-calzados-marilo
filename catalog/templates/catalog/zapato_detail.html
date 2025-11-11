@@ -1,0 +1,50 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ zapato.nombre }} — Detalle</title>
+    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}">
+</head>
+<body>
+    <a href="{% url 'catalog:zapato_list' %}">← Volver al catálogo</a>
+
+    <h1>{{ zapato.nombre }}</h1>
+
+    <p><strong>Marca:</strong> {{ zapato.marca.nombre }}</p>
+    <p><strong>Género:</strong> {{ zapato.genero }}</p>
+
+    <p><strong>Tallas disponibles:</strong>
+        {% if zapato.tallas.exists %}
+            <ul>
+                {% for talla in zapato.tallas.all %}
+                    <li>{{ talla.talla }}{% if talla.stock %} (stock: {{ talla.stock }}){% endif %}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <span>No hay tallas registradas</span>
+        {% endif %}
+    </p>
+
+    <p><strong>Precio:</strong>
+        {% if zapato.precioOferta %}
+            <span class="precio-oferta">€{{ zapato.precioOferta }}</span>
+            <small class="precio-original"><s>€{{ zapato.precio }}</s></small>
+        {% else %}
+            €{{ zapato.precio }}
+        {% endif %}
+    </p>
+
+    <p><strong>Color:</strong> {{ zapato.color }}</p>
+    <p><strong>Material:</strong> {{ zapato.material }}</p>
+    <p><strong>Disponible:</strong> {% if zapato.estaDisponible %}Sí{% else %}No{% endif %}</p>
+
+    <div class="description">{{ zapato.descripcion|linebreaks }}</div>
+
+    {% with primera=zapato.imagenes.all.0 %}
+        {% if primera %}
+            <img src="{{ primera.imagen.url }}" alt="{{ zapato.nombre }}" width="300">
+        {% endif %}
+    {% endwith %}
+</body>
+</html>
