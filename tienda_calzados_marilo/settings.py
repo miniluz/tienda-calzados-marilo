@@ -78,14 +78,22 @@ WSGI_APPLICATION = "tienda_calzados_marilo.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": envConfig.POSTGRES_DB,
-        "HOST": envConfig.POSTGRES_HOST,
-        "PORT": envConfig.POSTGRES_PORT,
-        "USER": envConfig.POSTGRES_USER,
-        "PASSWORD": envConfig.POSTGRES_PASSWORD,
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+
+if not envConfig.USE_SQLITE:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": envConfig.POSTGRES_DB,
+            "HOST": envConfig.POSTGRES_HOST,
+            "PORT": envConfig.POSTGRES_PORT,
+            "USER": envConfig.POSTGRES_USER,
+            "PASSWORD": envConfig.POSTGRES_PASSWORD,
+        }
+    }
 
 
 # Password validation
