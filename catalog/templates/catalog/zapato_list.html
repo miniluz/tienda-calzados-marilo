@@ -5,42 +5,244 @@
     <meta charset="utf-8">
     <title>Catálogo de Zapatos</title>
     <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}">
+    <style>
+        /* Estilo personalizado */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eaeaea;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Barra superior */
+        .top-bar {
+            background-color: #2d2d2d;
+            color: white;
+            font-size: 12px;
+            padding: 4px 10px;
+        }
+
+        /* Encabezado */
+        header {
+            background-color: #d9d9d9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+        }
+
+        .logo {
+            font-weight: bold;
+            font-size: 22px;
+            color: #1a1a4d;
+            line-height: 1.2;
+            text-decoration: none;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .search-box input[type="text"] {
+            padding: 8px 10px;
+            border: 1px solid #aaa;
+            border-radius: 3px;
+            width: 300px;
+        }
+
+        .search-box button {
+            padding: 8px 15px;
+            background-color: #1a1a4d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .user-info {
+            font-size: 14px;
+        }
+
+        /* Contenido principal */
+        main {
+            background-color: white;
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        main h1 {
+            margin-top: 0;
+            font-size: 24px;
+        }
+
+        .product-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .product-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            border-radius: 5px;
+        }
+
+        .product-card:hover {
+            transform: scale(1.05);
+        }
+
+        .product-card a {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .product-card img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        .product-card h2 {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .product-card p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .product-card .price {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .product-card .old-price {
+            text-decoration: line-through;
+            color: #999;
+            margin-right: 8px;
+        }
+
+        .product-card .discounted {
+            color: #d9534f;
+            font-weight: bold;
+        }
+
+        .product-card .add-button {
+            padding: 10px;
+            background-color: #1a1a4d;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: auto;
+        }
+
+        .product-card .add-button:hover {
+            background-color: #0f0f38;
+        }
+
+        .product-card.out-of-stock .add-button {
+            background-color: #ccc;
+            pointer-events: none;
+        }
+
+        .product-card .status {
+            font-weight: bold;
+            color: green;
+        }
+
+        .product-card.out-of-stock .status {
+            color: red;
+        }
+
+        footer {
+            background-color: #2d2d2d;
+            color: white;
+            text-align: center;
+            font-size: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        footer span {
+            margin: 0 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Catálogo de Zapatos</h1>
 
-    <form method="get">
-        {{ form.q }} <button type="submit">Buscar</button>
-    </form>
+    <header>
+        <a href="{% url 'catalog:zapato_list' %}" class="logo">
+            C a l z a d o s <br> M a r i l ó
+        </a>
 
-    <ul class="zapato-list">
-        {% for zapato in zapatos %}
-            <li>
+        <form method="get" class="search-box">
+            <input type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}">
+            <button type="submit">Buscar</button>
+        </form>
+
+        <div class="user-info">
+            Bienvenido Usuario 1 🧍‍♂️ 🛒
+        </div>
+    </header>
+
+    <main>
+        <h1>Catálogo de Zapatos</h1>
+
+        <div class="product-container">
+            {% for zapato in zapatos %}
+            <div class="product-card {% if zapato.total_stock == 0 or zapato.total_stock|default:0 == 0 %}out-of-stock{% endif %}">
                 <a href="{{ zapato.get_absolute_url }}">
                     {% if zapato.image %}
-                        <img src="{{ zapato.imagen.imagen }}" alt="{{ zapato.name }}" width="120">
+                        <img src="{{ zapato.imagen.imagen }}" alt="{{ zapato.name }}" >
                     {% endif %}
-                    <h2>{{ zapato.name }}</h2>
-                    <p>{{ zapato.marca.nombre }} — Talla {{ zapato.talla.talla }} — €{{ zapato.precio }}</p>
+                    <h2>{{ zapato.nombre }}</h2>
+                    <p>{{ zapato.descripcion }}</p>
+                    <p class="price">
+                        {% if zapato.precioOferta %}
+                            <span class="old-price">{{ zapato.precio }} €</span>
+                            <span class="discounted">{{ zapato.precioOferta }} €</span>
+                        {% else %}
+                            <span>{{ zapato.precio }} €</span>
+                        {% endif %}
+                    </p>
+                    <p class="status">{% if zapato.total_stock %}En stock ({{ zapato.total_stock }}){% else %}Fuera de stock{% endif %}</p>
+                    <button class="add-button" {% if not zapato.total_stock %}disabled{% endif %}>Añadir</button>
                 </a>
-            </li>
+            </div>
         {% empty %}
-            <li>No hay resultados.</li>
+            <p>No hay productos disponibles.</p>
         {% endfor %}
-    </ul>
+        </div>
+    </main>
 
-    <div class="pagination">
-        {% if is_paginated %}
-            {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
-            {% endif %}
-            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-            {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
-            {% endif %}
-        {% endif %}
-    </div>
+    <footer>
+        <span>Avenida del ejemplo nº 0</span> |
+        <span>(+00) 999-999-999</span> |
+        <span>CalzadosMariló@example.com</span>
+    </footer>
 
-    <script src="{% static 'catalog/js/scripts.js' %}"></script>
 </body>
 </html>

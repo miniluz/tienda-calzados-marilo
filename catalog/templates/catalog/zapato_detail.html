@@ -1,50 +1,236 @@
-{% load static %}
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="es">
 <head>
-    <meta charset="utf-8">
-    <title>{{ zapato.nombre }} — Detalle</title>
-    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}">
+  <meta charset="UTF-8">
+  <title>Calzados Mariló</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #eaeaea;
+      color: #333;
+    }
+
+    /* Barra superior */
+    .top-bar {
+      background-color: #2d2d2d;
+      color: white;
+      font-size: 12px;
+      padding: 4px 10px;
+    }
+
+    /* Encabezado */
+    header {
+      background-color: #d9d9d9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+    }
+
+    .logo {
+      font-weight: bold;
+      font-size: 22px;
+      color: #1a1a4d;
+      line-height: 1.2;
+    }
+
+    .search-box input[type="text"] {
+      padding: 5px;
+      border: 1px solid #aaa;
+      border-radius: 3px;
+    }
+
+    .search-box button {
+      padding: 5px 10px;
+      background-color: #1a1a4d;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .user-info {
+      font-size: 14px;
+    }
+
+    /* Contenido principal */
+    main {
+      background-color: white;
+      width: 80%;
+      margin: 30px auto;
+      display: flex;
+      gap: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .product-image img {
+      width: 100%;
+      max-width: 250px;
+      border-radius: 8px;
+    }
+
+    .product-info h3 {
+      margin-top: 0;
+      font-size: 20px;
+      color: #222;
+    }
+
+    .sizes button {
+      margin: 3px;
+      padding: 5px 10px;
+      border: 1px solid #888;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+      cursor: pointer;
+    }
+
+    .sizes button.active {
+      background-color: #1a4cff;
+      color: white;
+    }
+
+    .stock {
+      color: blue;
+      font-weight: bold;
+    }
+
+    .price {
+      font-size: 20px;
+      color: #333;
+      margin: 10px 0;
+    }
+
+    .actions button {
+      margin-right: 10px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .add-cart {
+      background-color: #333;
+      color: white;
+    }
+
+    .buy-now {
+      background-color: #1a4cff;
+      color: white;
+    }
+
+    /* Pie de página */
+    footer {
+      background-color: #2d2d2d;
+      color: white;
+      text-align: center;
+      font-size: 12px;
+      padding: 10px;
+      margin-top: 20px;
+    }
+
+    footer span {
+      margin: 0 10px;
+    }
+  </style>
 </head>
 <body>
-    <a href="{% url 'catalog:zapato_list' %}">← Volver al catálogo</a>
 
-    <h1>{{ zapato.nombre }}</h1>
 
-    <p><strong>Marca:</strong> {{ zapato.marca.nombre }}</p>
-    <p><strong>Género:</strong> {{ zapato.genero }}</p>
+  <header>
+    <div class="logo">
+      <a href="{% url 'catalog:zapato_list' %}" style="text-decoration: none; color: #1a1a4d;">
+        C a l z a d o s <br> M a r i l ó
+      </a>
+    </div>
 
-    <p><strong>Tallas disponibles:</strong>
-        {% if zapato.tallas.exists %}
-            <ul>
-                {% for talla in zapato.tallas.all %}
-                    <li>{{ talla.talla }}{% if talla.stock %} (stock: {{ talla.stock }}){% endif %}</li>
-                {% endfor %}
-            </ul>
+    <form method="get" action="{% url 'catalog:zapato_list' %}" class="search-box">
+      <input type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}">
+      <button type="submit">Buscar</button>
+    </form>
+
+    <div class="user-info">
+      Bienvenido Usuario 1 🧍‍♂️ 🛒
+    </div>
+  </header>
+
+  <main>
+    <div class="product-image">
+      {% with zapato.imagenes.all|first as main_image %}
+        {% if main_image %}
+          <img src="{{ main_image.imagen }}" alt="{{ zapato.nombre }}">
         {% else %}
-            <span>No hay tallas registradas</span>
+          <img src="https://via.placeholder.com/250x250.png?text=Sin+imagen" alt="Sin imagen">
         {% endif %}
-    </p>
+      {% endwith %}
+    </div>
 
-    <p><strong>Precio:</strong>
-        {% if zapato.precioOferta %}
-            <span class="precio-oferta">€{{ zapato.precioOferta }}</span>
-            <small class="precio-original"><s>€{{ zapato.precio }}</s></small>
+    <div class="product-info">
+      <h3>{{ zapato.nombre }}</h3>
+      <p>{{ zapato.descripcion }}</p>
+      <p><b>Marca:</b> {{ zapato.marca.nombre }}</p>
+      <p><b>Color:</b> {{ zapato.color|default:"No especificado" }}</p>
+      <p><b>Material:</b> {{ zapato.material|default:"No especificado" }}</p>
+      <p><b>Categoría:</b> {{ zapato.categoria.nombre|default:"Sin categoría" }}</p>
+      <p><b>Género:</b> {{ zapato.genero }}</p>
+
+      <p><b>Seleccionar talla:</b></p>
+      <div class="sizes">
+        {% for talla_obj in zapato.tallas.all %}
+          <button data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}">{{ talla_obj.talla }}</button>
+        {% empty %}
+          <p>No hay tallas disponibles.</p>
+        {% endfor %}
+      </div>
+
+      <p class="stock">
+        {% if zapato.estaDisponible %}
+          <span style="color: green;">✓ En stock</span>
         {% else %}
-            €{{ zapato.precio }}
+          <span style="color: red;">✗ Agotado</span>
         {% endif %}
-    </p>
+      </p>
+      
+      {% if zapato.precioOferta %}
+        <div class="price">
+          <span style="text-decoration: line-through; color: #999;">{{ zapato.precio|floatformat:2 }} €</span>
+          <span style="color: #e74c3c; font-weight: bold;">{{ zapato.precioOferta|floatformat:2 }} €</span>
+        </div>
+      {% else %}
+        <div class="price">{{ zapato.precio|floatformat:2 }} €</div>
+      {% endif %}
 
-    <p><strong>Color:</strong> {{ zapato.color }}</p>
-    <p><strong>Material:</strong> {{ zapato.material }}</p>
-    <p><strong>Disponible:</strong> {% if zapato.estaDisponible %}Sí{% else %}No{% endif %}</p>
+      <div class="actions">
+        <button class="add-cart" {% if not zapato.estaDisponible %}disabled{% endif %}>Añadir a la cesta</button>
+        <button class="buy-now" {% if not zapato.estaDisponible %}disabled{% endif %}>Comprar ya</button>
+      </div>
+    </div>
+  </main>
 
-    <div class="description">{{ zapato.descripcion|linebreaks }}</div>
+  <footer>
+    <span>Avenida del ejemplo nº 0</span> |
+    <span>(+00) 999-999-999</span> |
+    <span>CalzadosMarilo@example.com</span>
+  </footer>
 
-    {% with primera=zapato.imagenes.all.0 %}
-        {% if primera %}
-            <img src="{{ primera.imagen.url }}" alt="{{ zapato.nombre }}" width="300">
-        {% endif %}
-    {% endwith %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const sizeButtons = document.querySelectorAll('.sizes button');
+      
+      sizeButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          // Remover la clase active de todos los botones
+          sizeButtons.forEach(btn => btn.classList.remove('active'));
+          // Añadir la clase active al botón clickeado
+          this.classList.add('active');
+        });
+      });
+    });
+  </script>
+
 </body>
 </html>
