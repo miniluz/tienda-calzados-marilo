@@ -1,0 +1,69 @@
+from django.db import models
+from django.urls import reverse
+
+
+class Zapato(models.Model):
+    nombre = models.CharField("Nombre", max_length=200)
+    descripcion = models.TextField("Descripción", blank=True)
+    precio = models.IntegerField("Precio")
+    precioOferta = models.IntegerField("Precio de Oferta", blank=True, null=True)
+    genero = models.CharField(
+        "Género",
+        max_length=50,
+        choices=[
+            ("Hombre", "Hombre"),
+            ("Mujer", "Mujer"),
+            ("Niño", "Niño"),
+            ("Niña", "Niña"),
+            ("Unisex", "Unisex"),
+        ],
+    )
+    color = models.CharField("Color", max_length=50, blank=True)
+    material = models.CharField("Material", max_length=100, blank=True)
+    estaDisponible = models.BooleanField("Disponible", default=True)
+    estaDestacado = models.BooleanField("Destacado", default=False)
+    fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
+    fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
+    marca = models.ForeignKey("Marca", on_delete=models.CASCADE, related_name="zapatos")
+    categoria = models.ManyToManyField("Categoria", related_name="zapatos", blank=True)
+
+    class Meta:
+        ordering = ["-created"]
+        verbose_name = "Zapato"
+        verbose_name_plural = "Zapatos"
+
+
+class Marca(models.Model):
+    nombre = models.CharField("Nombre de la Marca", max_length=100)
+    imagen = models.ImageField("Imagen de la Marca", upload_to="marcas/", blank=True, null=True)
+    fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
+    fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
+
+
+class TallaZapato(models.Model):
+    talla = models.IntegerField("Talla")
+    stock = models.IntegerField("Stock", default=0)
+    fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
+    fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
+    zapato = models.ForeignKey(Zapato, on_delete=models.CASCADE, related_name="tallas")
+
+
+class ImagenZapato(models.Model):
+    zapato = models.ForeignKey(Zapato, on_delete=models.CASCADE, related_name="imagenes")
+    imagen = models.ImageField("Imagen del Zapato", upload_to="zapatos/")
+    esPrincipal = models.BooleanField("Imagen Principal", default=False)
+    fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
+    fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
+
+
+class Categoria(models.Model):
+    nombre = models.CharField("Nombre de la Categoría", max_length=100)
+    imagen = models.ImageField("Imagen de la Categoría", upload_to="categorias/", blank=True, null=True)
+    fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
+    fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.brand})"
+
+    def get_absolute_url(self):
+        return reverse("catalog:shoe_detail", args=[str(self.id)])

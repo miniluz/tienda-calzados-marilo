@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Catálogo de Zapatos</title>
+    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}">
+</head>
+<body>
+    <h1>Catálogo de Zapatos</h1>
+
+    <form method="get">
+        {{ form.q }} <button type="submit">Buscar</button>
+    </form>
+
+    <ul class="zapato-list">
+        {% for zapato in zapatos %}
+            <li>
+                <a href="{{ zapato.get_absolute_url }}">
+                    {% if zapato.image %}
+                        <img src="{{ zapato.imagen.imagen }}" alt="{{ zapato.name }}" width="120">
+                    {% endif %}
+                    <h2>{{ zapato.name }}</h2>
+                    <p>{{ zapato.marca.nombre }} — Talla {{ zapato.talla.talla }} — €{{ zapato.precio }}</p>
+                </a>
+            </li>
+        {% empty %}
+            <li>No hay resultados.</li>
+        {% endfor %}
+    </ul>
+
+    <div class="pagination">
+        {% if is_paginated %}
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% endif %}
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <script src="{% static 'catalog/js/scripts.js' %}"></script>
+</body>
+</html>
