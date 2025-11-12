@@ -229,7 +229,7 @@
             <h5>Seleccionar talla:</h5>
             {% for talla_obj in zapato.tallas.all %}
                 <button data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}" {% if talla_obj.stock == 0 %}disabled{% endif %}>
-                    Talla {{ talla_obj.talla }} {% if talla_obj.stock > 0 %}({{ talla_obj.stock }} disponibles){% else %}(Agotada){% endif %}
+                    Talla {{ talla_obj.talla }}
                 </button>
             {% empty %}
                 <p class="text-muted">No hay tallas disponibles para este producto.</p>
