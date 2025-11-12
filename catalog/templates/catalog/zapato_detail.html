@@ -191,6 +191,20 @@
             margin: 10px 0;
         }
     }
+
+    .featured-badge-detail {
+        display: inline-block;
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #1a1a1a;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+        margin-bottom: 15px;
+    }
 </style>
 {% endblock %}
 
@@ -213,6 +227,9 @@
     </div>
 
     <div class="product-info">
+        {% if zapato.estaDestacado %}
+            <div class="featured-badge-detail">Producto destacado</div>
+        {% endif %}
         <h1>{{ zapato.nombre }}</h1>
 
         <p class="description">{{ zapato.descripcion }}</p>
