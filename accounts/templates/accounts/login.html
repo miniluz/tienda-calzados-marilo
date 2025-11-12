@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar Sesión - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4">Iniciar Sesión</h2>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">Correo electrónico</label>
+                        <input type="text"
+                               name="username"
+                               class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+                               id="id_username"
+                               placeholder="correo@ejemplo.com"
+                               required>
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.username.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label">Contraseña</label>
+                        <input type="password"
+                               name="password"
+                               class="form-control {% if form.password.errors %}is-invalid{% endif %}"
+                               id="id_password"
+                               placeholder="Tu contraseña"
+                               required>
+                        {% if form.password.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.password.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">Iniciar sesión</button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <p class="text-center mb-0">
+                    ¿No tienes cuenta? <a href="{% url 'register' %}">Crear cuenta</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

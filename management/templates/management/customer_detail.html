@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Cliente - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4">Detalle de Cliente</h2>
+
+                <div class="mb-3">
+                    <strong>Nombre:</strong> {{ user.first_name }} {{ user.last_name }}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Correo electrónico:</strong> {{ user.email }}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Dirección asociada:</strong> {{ customer.address }}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Ciudad:</strong> {{ customer.city }}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Código postal:</strong> {{ customer.postal_code }}
+                </div>
+
+                <div class="mb-3">
+                    <strong>Número de teléfono:</strong> {{ customer.phone_number }}
+                </div>
+
+                <div class="mb-4">
+                    <strong>Fecha de registro:</strong> {{ customer.created_at|date:"d/m/Y H:i" }}
+                </div>
+
+                <div class="d-flex gap-2 justify-content-between">
+                    <a href="{% url 'customer_list' %}" class="btn btn-secondary">Volver</a>
+                    <div>
+                        <a href="{% url 'customer_edit' user.id %}" class="btn btn-primary">Editar</a>
+                        <a href="{% url 'customer_delete' user.id %}" class="btn btn-danger">Eliminar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
