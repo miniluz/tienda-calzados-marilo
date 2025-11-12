@@ -200,49 +200,6 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">Catálogo de Zapatos</h1>
-
-    <!-- Search Form (aligned left after title) -->
-    <form method="get" class="d-flex ms-4" style="flex: 0 0 auto;">
-        <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 300px;">
-        <button class="btn btn-primary" type="submit">Buscar</button>
-    </form>
-</div>
-
-<!-- Filters Section -->
-<div class="filter-section">
-    <h5>Filtros</h5>
-    <form method="get" class="row g-3">
-        <!-- Row 1: Dropdowns and Size -->
-        <div class="col-md-3">
-            <label for="{{ form.categoria.id_for_label }}" class="form-label">Categoría</label>
-            {{ form.categoria }}
-        </div>
-        <div class="col-md-3">
-            <label for="{{ form.marca.id_for_label }}" class="form-label">Marca</label>
-            {{ form.marca }}
-        </div>
-        <div class="col-md-3">
-            <label for="{{ form.genero.id_for_label }}" class="form-label">Género</label>
-            {{ form.genero }}
-        </div>
-        <div class="col-md-3">
-            <label for="talla" class="form-label">Talla</label>
-            <input type="number" class="form-control" id="talla" name="talla" placeholder="Ej: 42" value="{{ request.GET.talla }}">
-        </div>
-
-        <!-- Row 2: Price Range and Button -->
-        <div class="col-md-4">
-            <label for="min_precio" class="form-label">Precio mínimo (€)</label>
-            <input type="number" class="form-control" id="min_precio" name="min_precio" placeholder="0" value="{{ request.GET.min_precio }}">
-        </div>
-        <div class="col-md-4">
-            <label for="max_precio" class="form-label">Precio máximo (€)</label>
-            <input type="number" class="form-control" id="max_precio" name="max_precio" placeholder="200" value="{{ request.GET.max_precio }}">
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">Aplicar Filtros</button>
-        </div>
-    </form>
 </div>
 
 <!-- Products Grid -->
@@ -381,6 +338,8 @@
                 });
             }
         });
+
+        
     });
 </script>
 {% endblock %}
