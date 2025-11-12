@@ -1,3 +1,5 @@
+from django.contrib import messages
+from django.shortcuts import redirect
 from django.views.generic import ListView, DetailView
 from django.http import JsonResponse
 from django.db.models import Q
@@ -70,6 +72,14 @@ class ZapatoDetailView(DetailView):
     model = Zapato
     template_name = "catalog/zapato_detail.html"
     context_object_name = "zapato"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not self.object.estaDisponible:
+            messages.error(request, "Este producto no está disponible actualmente.")
+            return redirect("catalog:zapato_list")
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
 
 
 def zapato_list_api(request):
