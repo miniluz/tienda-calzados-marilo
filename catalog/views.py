@@ -14,12 +14,30 @@ class ZapatoListView(ListView):
     def get_queryset(self):
         qs = super().get_queryset().filter(estaDisponible=True)
         q = self.request.GET.get("q")
+        categoria = self.request.GET.get("categoria")
+        marca = self.request.GET.get("marca")
+        genero = self.request.GET.get("genero")
         talla = self.request.GET.get("talla")
         min_precio = self.request.GET.get("min_precio")
         max_precio = self.request.GET.get("max_precio")
 
         if q:
             qs = qs.filter(Q(nombre__icontains=q) | Q(marca__nombre__icontains=q) | Q(descripcion__icontains=q))
+
+        if categoria:
+            try:
+                qs = qs.filter(categoria__id=int(categoria))
+            except (ValueError, TypeError):
+                pass
+
+        if marca:
+            try:
+                qs = qs.filter(marca__id=int(marca))
+            except (ValueError, TypeError):
+                pass
+
+        if genero:
+            qs = qs.filter(genero=genero)
 
         if talla:
             try:
