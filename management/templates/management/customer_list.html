@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Clientes - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Gestión de Clientes</h2>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-body">
+                {% if customers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Teléfono</th>
+                                    <th>Ciudad</th>
+                                    <th>Fecha de registro</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for customer in customers %}
+                                    <tr>
+                                        <td>{{ customer.user.first_name }} {{ customer.user.last_name }}</td>
+                                        <td>{{ customer.user.email }}</td>
+                                        <td>{{ customer.phone_number }}</td>
+                                        <td>{{ customer.city }}</td>
+                                        <td>{{ customer.created_at|date:"d/m/Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'customer_detail' customer.user.id %}" class="btn btn-sm btn-info">Ver</a>
+                                            <a href="{% url 'customer_edit' customer.user.id %}" class="btn btn-sm btn-primary">Editar</a>
+                                            <a href="{% url 'customer_delete' customer.user.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted mb-0">No hay clientes registrados.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

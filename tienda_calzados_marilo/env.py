@@ -9,6 +9,9 @@ load_dotenv()
 class EnvConfig(NamedTuple):
     DJANGO_DEBUG: bool
     DJANGO_SECRET_KEY: str
+    ALLOWED_HOSTS: list[str]
+    ADMIN_PASSWORD: str
+    USE_SQLITE: bool
     POSTGRES_HOST: str
     POSTGRES_PORT: str
     POSTGRES_USER: str
@@ -19,17 +22,21 @@ class EnvConfig(NamedTuple):
 envConfig: EnvConfig | None = None
 
 
-def getFromEnv(name: str) -> str:
+def getFromEnv(name: str, optional=False) -> str:
     var = os.getenv(name)
 
-    if var is None:
+    if not optional and var is None:
         raise ValueError(f"The environment variable `${name}` is empty.")
 
-    return var
+    return var if var is not None else ""
 
 
 def getBoolFromEnv(name: str) -> bool:
-    return getFromEnv(name).strip() != ""
+    return getFromEnv(name, True).strip() != ""
+
+
+def getListFromEnv(name: str) -> list[str]:
+    return getFromEnv(name, True).split(",")
 
 
 def getEnvConfig() -> EnvConfig:
@@ -38,14 +45,19 @@ def getEnvConfig() -> EnvConfig:
     if envConfig is not None:
         return envConfig
 
+    use_sqlite = getBoolFromEnv("USE_SQLITE")
+
     envConfig = EnvConfig(
         DJANGO_DEBUG=getBoolFromEnv("DJANGO_DEBUG"),
         DJANGO_SECRET_KEY=getFromEnv("DJANGO_SECRET_KEY"),
-        POSTGRES_HOST=getFromEnv("POSTGRES_HOST"),
-        POSTGRES_PORT=getFromEnv("POSTGRES_PORT"),
-        POSTGRES_USER=getFromEnv("POSTGRES_USER"),
-        POSTGRES_PASSWORD=getFromEnv("POSTGRES_PASSWORD"),
-        POSTGRES_DB=getFromEnv("POSTGRES_DB"),
+        ALLOWED_HOSTS=getListFromEnv("ALLOWED_HOSTS"),
+        ADMIN_PASSWORD=getFromEnv("ADMIN_PASSWORD"),
+        USE_SQLITE=getBoolFromEnv("USE_SQLITE"),
+        POSTGRES_HOST=getFromEnv("POSTGRES_HOST", use_sqlite),
+        POSTGRES_PORT=getFromEnv("POSTGRES_PORT", use_sqlite),
+        POSTGRES_USER=getFromEnv("POSTGRES_USER", use_sqlite),
+        POSTGRES_PASSWORD=getFromEnv("POSTGRES_PASSWORD", use_sqlite),
+        POSTGRES_DB=getFromEnv("POSTGRES_DB", use_sqlite),
     )
 
     return envConfig
