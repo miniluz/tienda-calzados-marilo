@@ -1,17 +1,19 @@
 from django.test import TestCase
 from django.urls import reverse
-from .models import Zapato
+from .models import Marca, Zapato
 
 
 class ZapatoModelTest(TestCase):
     def test_str(self):
-        s = Zapato.objects.create(nombre="Test", marca="Marca", talla=42.0, precio=50.0)
+        marca = Marca.objects.create(nombre="Marca")
+        s = Zapato.objects.create(nombre="Test", marca=marca, precio=50, genero="Unisex")
         self.assertIn("Test", str(s))
 
 
 class ZapatoViewsTest(TestCase):
     def setUp(self):
-        Zapato.objects.create(nombre="A", marca="X", talla=40, precio=200, available=True)
+        marca = Marca.objects.create(nombre="X")
+        Zapato.objects.create(nombre="A", marca=marca, precio=200, genero="Unisex", estaDisponible=True)
 
     def test_list_status(self):
         url = reverse("catalog:zapato_list")
