@@ -31,8 +31,7 @@
 
         /* Category Header Styles */
         .category-header {
-            background-color: #212529;
-            padding: 12px 0;
+            background-color: #151522;
             border-bottom: 1px solid #ddd;
             display: flex;
             gap: 0;
@@ -43,11 +42,11 @@
         }
 
         .category-header .category-btn {
+            background-color: #151522;
             padding: 10px 15px;
             font-size: 14px;
             border: none;
             border-right: 1px solid #444;
-            background-color: #212529;
             color: white;
             text-decoration: none;
             border-radius: 0;
@@ -70,6 +69,12 @@
             background-color: white;
             color: black;
         }
+
+        .logo {
+            height: 50px;
+            width: auto;
+            filter: saturate(150%) brightness(110%);
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -78,7 +83,9 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'home' %}">Calzados Marilo</a>
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <img class="logo" src="{% static '/images/calzados-marilo-logo.png' %}" alt="Calzados Marilo">
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
