@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Marca - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-md-8 col-lg-6 mx-auto">
+        <h2 class="mb-4">Crear Nueva Marca</h2>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% include 'management/includes/form_errors.html' with form=form %}
+
+            <div class="card shadow mb-3">
+                <div class="card-body">
+                    <!-- Nombre de la marca -->
+                    <div class="mb-3">
+                        {{ form.nombre.label_tag }}
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small">{{ form.nombre.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Imagen -->
+                    <div class="mb-3">
+                        {{ form.imagen.label_tag }}
+                        {{ form.imagen }}
+                        {% if form.imagen.errors %}
+                            <div class="text-danger small">{{ form.imagen.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted d-block mt-1">Opcional. Puedes añadir la imagen más tarde.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'marca_list' %}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Crear Marca</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Zapato - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-lg-8 mx-auto">
+        <h2 class="mb-4">Crear Nuevo Zapato</h2>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% include 'management/includes/form_errors.html' with form=form %}
+
+            <div class="card shadow mb-3">
+                <div class="card-body">
+                    <!-- Producto -->
+                    <div class="mb-3">
+                        {{ form.nombre.label_tag }}
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small">{{ form.nombre.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="mb-3">
+                        {{ form.descripcion.label_tag }}
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}
+                            <div class="text-danger small">{{ form.descripcion.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Marca -->
+                    <div class="mb-3">
+                        {{ form.marca.label_tag }}
+                        {{ form.marca }}
+                        {% if form.marca.errors %}
+                            <div class="text-danger small">{{ form.marca.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted">Si la marca no existe, <a href="{% url 'marca_create' %}" target="_blank">créala primero</a>.</small>
+                    </div>
+
+                    <!-- Precio -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.precio.label_tag }}
+                            <div class="input-group">
+                                {{ form.precio }}
+                                <span class="input-group-text">€</span>
+                            </div>
+                            {% if form.precio.errors %}
+                                <div class="text-danger small">{{ form.precio.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Precio Oferta -->
+                        <div class="col-md-6 mb-3">
+                            {{ form.precioOferta.label_tag }}
+                            <div class="input-group">
+                                {{ form.precioOferta }}
+                                <span class="input-group-text">€</span>
+                            </div>
+                            {% if form.precioOferta.errors %}
+                                <div class="text-danger small">{{ form.precioOferta.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted">Opcional</small>
+                        </div>
+                    </div>
+
+                    <!-- Categoría -->
+                    <div class="mb-3">
+                        {{ form.categoria.label_tag }}
+                        {{ form.categoria }}
+                        {% if form.categoria.errors %}
+                            <div class="text-danger small">{{ form.categoria.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted">Opcional. Si la categoría no existe, <a href="{% url 'categoria_create' %}" target="_blank">créala primero</a>.</small>
+                    </div>
+
+                    <!-- Género -->
+                    <div class="mb-3">
+                        {{ form.genero.label_tag }}
+                        {{ form.genero }}
+                        {% if form.genero.errors %}
+                            <div class="text-danger small">{{ form.genero.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Materiales -->
+                    <div class="mb-3">
+                        {{ form.material.label_tag }}
+                        {{ form.material }}
+                        {% if form.material.errors %}
+                            <div class="text-danger small">{{ form.material.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Colores -->
+                    <div class="mb-3">
+                        {{ form.color.label_tag }}
+                        {{ form.color }}
+                        {% if form.color.errors %}
+                            <div class="text-danger small">{{ form.color.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Imagen -->
+                    <div class="mb-3">
+                        {{ form.imagen.label_tag }}
+                        {{ form.imagen }}
+                        {% if form.imagen.errors %}
+                            <div class="text-danger small">{{ form.imagen.errors }}</div>
+                        {% endif %}
+                        <small class="text-muted">Opcional. Puedes añadir la imagen más tarde editando el zapato.</small>
+                    </div>
+
+                    <!-- Destacado -->
+                    <div class="mb-3 form-check">
+                        {{ form.estaDestacado }}
+                        {{ form.estaDestacado.label_tag }}
+                        {% if form.estaDestacado.errors %}
+                            <div class="text-danger small">{{ form.estaDestacado.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Disponible -->
+                    <div class="mb-3 form-check">
+                        {{ form.estaDisponible }}
+                        {{ form.estaDisponible.label_tag }}
+                        {% if form.estaDisponible.errors %}
+                            <div class="text-danger small">{{ form.estaDisponible.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Después de crear el zapato, podrás configurar el stock por tallas.
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'zapato_admin_list' %}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Crear Zapato</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

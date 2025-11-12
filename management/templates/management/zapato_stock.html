@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ zapato.nombre }} - Gestión de Stock - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-1">{{ zapato.nombre }} - Stock</h2>
+        <p class="text-muted mb-4">Gestiona el stock por tallas</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Stock por Tallas</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Talla</th>
+                                <th style="width: 15%;">Stock Actual</th>
+                                <th style="width: 25%;">Añadir Stock</th>
+                                <th style="width: 25%;">Quitar Stock</th>
+                                <th style="width: 20%;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for talla in zapato.tallas.all %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary fs-6">{{ talla.talla }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ talla.stock }}</strong> unidades
+                                    </td>
+                                    <td>
+                                        <form method="post" class="d-inline-flex gap-2" style="max-width: 200px;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="add">
+                                            <input type="hidden" name="talla_id" value="{{ talla.id }}">
+                                            <input type="number" name="amount" class="form-control form-control-sm" value="1" min="1" style="width: 80px;">
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <form method="post" class="d-inline-flex gap-2" style="max-width: 200px;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="remove">
+                                            <input type="hidden" name="talla_id" value="{{ talla.id }}">
+                                            <input type="number" name="amount" class="form-control form-control-sm" value="1" min="1" style="width: 80px;">
+                                            <button type="submit" class="btn btn-sm btn-warning">
+                                                <i class="bi bi-dash-lg"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar esta talla?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="talla_id" value="{{ talla.id }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash"></i> Eliminar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        No hay tallas disponibles. Añade una nueva talla abajo.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Añadir Nueva Talla</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div class="row align-items-end">
+                        <div class="col-md-3">
+                            <label for="id_talla" class="form-label">Talla</label>
+                            <input type="number" name="talla" id="id_talla" class="form-control" placeholder="Ej: 42" min="1" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="id_stock_inicial" class="form-label">Stock Inicial</label>
+                            <input type="number" name="stock_inicial" id="id_stock_inicial" class="form-control" placeholder="Ej: 10" min="0" value="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Crear Talla
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'zapato_admin_detail' zapato.id %}" class="btn btn-secondary">Volver</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

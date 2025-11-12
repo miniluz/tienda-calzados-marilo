@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Stock - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Stock</h2>
+            <a href="{% url 'zapato_admin_create' %}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> Añadir Zapato
+            </a>
+        </div>
+
+        {% if zapatos %}
+            <div class="row g-4">
+                {% for zapato in zapatos %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card shadow h-100">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-4">
+                                        {% if zapato.imagen %}
+                                            <img src="{{ zapato.imagen.url }}" alt="{{ zapato.nombre }}" class="img-fluid rounded" style="object-fit: cover; width: 100%; height: 100px;">
+                                        {% else %}
+                                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 100px;">
+                                                <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-8">
+                                        <h5 class="card-title mb-2">{{ zapato.nombre }}</h5>
+                                        <p class="card-text mb-1"><strong>Unidades: {{ zapato.total_stock }}</strong></p>
+                                        <p class="card-text mb-1">{{ zapato.precio }}€</p>
+                                        <p class="card-text mb-2">
+                                            {% if zapato.total_stock > 0 %}
+                                                <span class="badge bg-success">En stock</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Fuera de stock</span>
+                                            {% endif %}
+                                        </p>
+                                        <a href="{% url 'zapato_admin_detail' zapato.id %}" class="btn btn-sm btn-secondary">Modificar</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No hay zapatos registrados.
+                <a href="{% url 'zapato_admin_create' %}">Crear el primero</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
