@@ -1,0 +1,4 @@
+body { font-family: Arial, sans-serif; margin: 20px; }
+.zapato-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 16px; }
+.zapato-list li { border: 1px solid #ddd; padding: 8px; width: 200px; }
+.zapato-list img { display: block; margin: 0 auto 8px; }

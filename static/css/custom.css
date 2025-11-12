@@ -1,0 +1,180 @@
+/* Custom Bootstrap 5.3.2 Primary Color Override */
+/* Primary: #1a1a4d (normal) | #0f0f38 (hover) */
+
+:root {
+    /* Override Bootstrap primary color variables */
+    --bs-primary: #1a1a4d;
+    --bs-primary-rgb: 26, 26, 77;
+    --bs-primary-text-emphasis: #0a0a26;
+    --bs-primary-bg-subtle: #d4d4e0;
+    --bs-primary-border-subtle: #8585a6;
+
+    /* Hover state color */
+    --bs-primary-hover: #0f0f38;
+    --bs-primary-hover-rgb: 15, 15, 56;
+}
+
+/* Dark mode overrides */
+[data-bs-theme="dark"] {
+    --bs-primary-text-emphasis: #7a7aa3;
+    --bs-primary-bg-subtle: #0a0a26;
+    --bs-primary-border-subtle: #14143d;
+}
+
+/* Button Primary */
+.btn-primary {
+    --bs-btn-bg: #1a1a4d;
+    --bs-btn-border-color: #1a1a4d;
+    --bs-btn-hover-bg: #0f0f38;
+    --bs-btn-hover-border-color: #0f0f38;
+    --bs-btn-active-bg: #0f0f38;
+    --bs-btn-active-border-color: #0f0f38;
+    --bs-btn-disabled-bg: #1a1a4d;
+    --bs-btn-disabled-border-color: #1a1a4d;
+}
+
+/* Button Outline Primary */
+.btn-outline-primary {
+    --bs-btn-color: #1a1a4d;
+    --bs-btn-border-color: #1a1a4d;
+    --bs-btn-hover-bg: #1a1a4d;
+    --bs-btn-hover-border-color: #1a1a4d;
+    --bs-btn-active-bg: #1a1a4d;
+    --bs-btn-active-border-color: #1a1a4d;
+}
+
+.btn-outline-primary:hover {
+    background-color: #0f0f38 !important;
+    border-color: #0f0f38 !important;
+}
+
+/*
+.btn-outline-light {
+    --bs-btn-color: black !important;
+}
+*/
+
+/* Links */
+a {
+    color: #1a1a4d;
+}
+
+a:hover {
+    color: #0f0f38;
+}
+
+/* Badge Primary */
+.badge.bg-primary {
+    background-color: #1a1a4d !important;
+}
+
+/* Alert Primary */
+.alert-primary {
+    --bs-alert-color: #0a0a26;
+    --bs-alert-bg: #d4d4e0;
+    --bs-alert-border-color: #8585a6;
+}
+
+/* Background Primary */
+.bg-primary {
+    background-color: #1a1a4d !important;
+}
+
+/* Border Primary */
+.border-primary {
+    border-color: #1a1a4d !important;
+}
+
+/* Text Primary */
+.text-primary {
+    color: #1a1a4d !important;
+}
+
+/* List Group Primary */
+.list-group-item-primary {
+    color: #0a0a26;
+    background-color: #d4d4e0;
+}
+
+/* Pagination */
+.pagination .page-link {
+    color: #1a1a4d;
+}
+
+.pagination .page-link:hover {
+    color: #0f0f38;
+    background-color: #d4d4e0;
+}
+
+.pagination .page-item.active .page-link {
+    color: white;
+    background-color: #1a1a4d;
+    border-color: #1a1a4d;
+}
+
+/* Progress Bar */
+.progress-bar {
+    background-color: #1a1a4d;
+}
+
+/* Nav Pills */
+.nav-pills .nav-link.active {
+    background-color: #1a1a4d;
+}
+
+.nav-pills .nav-link:hover {
+    background-color: #0f0f38;
+    color: white;
+}
+
+/* Dropdown */
+.dropdown-item.active,
+.dropdown-item:active {
+    background-color: #1a1a4d;
+}
+
+.dropdown-item:hover {
+    background-color: #d4d4e0;
+}
+
+/* Form Controls Focus */
+.form-control:focus,
+.form-select:focus {
+    border-color: #8585a6;
+    box-shadow: 0 0 0 0.25rem rgba(26, 26, 77, 0.25);
+}
+
+/* Form Check (Checkboxes & Radio) */
+.form-check-input:checked {
+    background-color: #1a1a4d;
+    border-color: #1a1a4d;
+}
+
+.form-check-input:focus {
+    border-color: #8585a6;
+    box-shadow: 0 0 0 0.25rem rgba(26, 26, 77, 0.25);
+}
+
+/* Form Range (Slider) */
+.form-range::-webkit-slider-thumb {
+    background-color: #1a1a4d;
+}
+
+.form-range::-moz-range-thumb {
+    background-color: #1a1a4d;
+}
+
+.form-range:focus::-webkit-slider-thumb {
+    background-color: #0f0f38;
+    box-shadow: 0 0 0 0.25rem rgba(26, 26, 77, 0.25);
+}
+
+.form-range:focus::-moz-range-thumb {
+    background-color: #0f0f38;
+    box-shadow: 0 0 0 0.25rem rgba(26, 26, 77, 0.25);
+}
+
+/* Toast */
+.toast.bg-primary {
+    background-color: #1a1a4d !important;
+}

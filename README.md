@@ -33,6 +33,20 @@ Si no, Ejecute la base de datos y el servidor de administración de la base de d
 docker compose up
 ```
 
+Ejecute las migraciones de la base de datos:
+
+```
+uv run manage.py migrate
+```
+
+Pueble la base de datos con datos de ejemplo (opcional):
+
+```
+uv run manage.py seed
+```
+
+Este comando ejecuta automáticamente `seeders.py` en cada aplicación instalada que lo tenga definido.
+
 Y ejecute el servidor de desarrollo:
 
 ```

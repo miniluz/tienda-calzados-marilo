@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Marca - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-md-8 col-lg-6 mx-auto">
+        <h2 class="mb-4">Editar Marca</h2>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% include 'management/includes/form_errors.html' with form=form %}
+
+            <div class="card shadow mb-3">
+                <div class="card-body">
+                    <!-- Image preview -->
+                    <div class="text-center mb-4">
+                        {% if marca.imagen %}
+                            <img src="{{ marca.imagen.url }}" alt="{{ marca.nombre }}" class="img-fluid mb-2" style="max-height: 200px; object-fit: contain;">
+                        {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center mb-2" style="height: 200px;">
+                                <i class="bi bi-tag text-muted" style="font-size: 4rem;"></i>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <label class="btn btn-sm btn-secondary" for="{{ form.imagen.id_for_label }}">
+                                Modificar imagen
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Imagen field (hidden) -->
+                    <div class="mb-3" style="display: none;">
+                        {{ form.imagen }}
+                        {% if form.imagen.errors %}
+                            <div class="text-danger small">{{ form.imagen.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Nombre de la marca -->
+                    <div class="mb-3">
+                        {{ form.nombre.label_tag }}
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small">{{ form.nombre.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'marca_list' %}" class="btn btn-secondary">Volver</a>
+                <div>
+                    <a href="{% url 'marca_delete' marca.id %}" class="btn btn-danger me-2">Eliminar</a>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

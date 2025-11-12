@@ -16,15 +16,30 @@ Including another URLconf
 """
 
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
+from django.shortcuts import redirect
 from django.urls import include, path
-from django.views.generic import TemplateView
+
+
+def home_redirect(request):
+    """Redirect to appropriate page based on user type"""
+    if request.user.is_authenticated:
+        if request.user.is_staff:
+            return redirect("admin_dashboard")
+        else:
+            return redirect("catalog:zapato_list")
+    else:
+        return redirect("catalog:zapato_list")
+
 
 urlpatterns = [
+    path("catalog/", include("catalog.urls", namespace="catalog")),
     path("accounts/", include("accounts.urls")),
     path("management/", include("management.urls")),
-    path("", TemplateView.as_view(template_name="home.html"), name="home"),
+    path("", home_redirect, name="home"),
 ]
 
 if settings.DEBUG:
     urlpatterns.append(path("admin/", admin.site.urls))
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

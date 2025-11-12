@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Zapato - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">Editar Zapato</h2>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% include 'management/includes/form_errors.html' with form=form %}
+
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <!-- Image management -->
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <!-- Image preview -->
+                            <div class="text-center mb-4">
+                                {% if zapato.imagen %}
+                                    <img src="{{ zapato.imagen.url }}" alt="{{ zapato.nombre }}" class="img-fluid rounded mb-2" style="max-height: 300px; object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-light rounded d-flex align-items-center justify-content-center mb-2" style="height: 300px;">
+                                        <i class="bi bi-image text-muted" style="font-size: 4rem;"></i>
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <label class="btn btn-sm btn-secondary" for="{{ form.imagen.id_for_label }}">
+                                        Modificar imagen
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Imagen field (hidden) -->
+                            <div class="mb-3" style="display: none;">
+                                {{ form.imagen }}
+                                {% if form.imagen.errors %}
+                                    <div class="text-danger small">{{ form.imagen.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card shadow mb-3">
+                        <div class="card-body">
+                            <!-- Producto -->
+                            <div class="mb-3">
+                                {{ form.nombre.label_tag }}
+                                {{ form.nombre }}
+                                {% if form.nombre.errors %}
+                                    <div class="text-danger small">{{ form.nombre.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Descripción -->
+                            <div class="mb-3">
+                                {{ form.descripcion.label_tag }}
+                                {{ form.descripcion }}
+                                {% if form.descripcion.errors %}
+                                    <div class="text-danger small">{{ form.descripcion.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Marca -->
+                            <div class="mb-3">
+                                {{ form.marca.label_tag }}
+                                {{ form.marca }}
+                                {% if form.marca.errors %}
+                                    <div class="text-danger small">{{ form.marca.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Precio -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    {{ form.precio.label_tag }}
+                                    <div class="input-group">
+                                        {{ form.precio }}
+                                        <span class="input-group-text">€</span>
+                                    </div>
+                                    {% if form.precio.errors %}
+                                        <div class="text-danger small">{{ form.precio.errors }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Precio Oferta -->
+                                <div class="col-md-6 mb-3">
+                                    {{ form.precioOferta.label_tag }}
+                                    <div class="input-group">
+                                        {{ form.precioOferta }}
+                                        <span class="input-group-text">€</span>
+                                    </div>
+                                    {% if form.precioOferta.errors %}
+                                        <div class="text-danger small">{{ form.precioOferta.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Categoría -->
+                            <div class="mb-3">
+                                {{ form.categoria.label_tag }}
+                                {{ form.categoria }}
+                                {% if form.categoria.errors %}
+                                    <div class="text-danger small">{{ form.categoria.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Género -->
+                            <div class="mb-3">
+                                {{ form.genero.label_tag }}
+                                {{ form.genero }}
+                                {% if form.genero.errors %}
+                                    <div class="text-danger small">{{ form.genero.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Materiales -->
+                            <div class="mb-3">
+                                {{ form.material.label_tag }}
+                                {{ form.material }}
+                                {% if form.material.errors %}
+                                    <div class="text-danger small">{{ form.material.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Colores -->
+                            <div class="mb-3">
+                                {{ form.color.label_tag }}
+                                {{ form.color }}
+                                {% if form.color.errors %}
+                                    <div class="text-danger small">{{ form.color.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Stock -->
+                            <div class="mb-3">
+                                <label class="form-label">Stock</label>
+                                <div>
+                                    <strong>Total: {{ total_stock }} unidades</strong>
+                                    <a href="{% url 'zapato_stock_edit' zapato.id %}" class="btn btn-sm btn-secondary ms-2">Modificar</a>
+                                </div>
+                            </div>
+
+                            <!-- Destacado -->
+                            <div class="mb-3 form-check">
+                                {{ form.estaDestacado }}
+                                <label for="{{ form.estaDestacado.id_for_label }}" class="form-check-label">Destacado</label>
+                                {% if form.estaDestacado.errors %}
+                                    <div class="text-danger small">{{ form.estaDestacado.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Disponible -->
+                            <div class="mb-3 form-check">
+                                {{ form.estaDisponible }}
+                                <label for="{{ form.estaDisponible.id_for_label }}" class="form-check-label">Disponible</label>
+                                {% if form.estaDisponible.errors %}
+                                    <div class="text-danger small">{{ form.estaDisponible.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'zapato_admin_list' %}" class="btn btn-secondary">Volver</a>
+                        <div>
+                            <a href="{% url 'zapato_admin_delete' zapato.id %}" class="btn btn-danger me-2">Eliminar</a>
+                            <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

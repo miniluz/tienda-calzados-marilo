@@ -5,8 +5,17 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.views import View
+from django.db.models import Sum, F
 from customer.models import Customer
-from .forms import CustomerEditForm, AdminCreateForm, AdminEditForm
+from catalog.models import Zapato, Marca, Categoria, TallaZapato
+from .forms import (
+    CustomerEditForm,
+    AdminCreateForm,
+    AdminEditForm,
+    ZapatoForm,
+    MarcaForm,
+    CategoriaForm,
+)
 
 
 def staff_required(function=None):
@@ -24,10 +33,20 @@ class AdminDashboardView(View):
     def get(self, request):
         customer_count = Customer.objects.count()
         admin_count = User.objects.filter(is_staff=True).count()
+        zapato_count = Zapato.objects.count()
+        marca_count = Marca.objects.count()
+        categoria_count = Categoria.objects.count()
+
         return render(
             request,
             self.template_name,
-            {"customer_count": customer_count, "admin_count": admin_count},
+            {
+                "customer_count": customer_count,
+                "admin_count": admin_count,
+                "zapato_count": zapato_count,
+                "marca_count": marca_count,
+                "categoria_count": categoria_count,
+            },
         )
 
 
@@ -251,3 +270,375 @@ class AdminDeleteView(View):
         user.delete()
         messages.success(request, f"Administrador {user_name} eliminado correctamente.")
         return redirect("admin_list")
+
+
+# ==================== ZAPATO (SHOE) MANAGEMENT VIEWS ====================
+
+
+@method_decorator(staff_required, name="dispatch")
+class ZapatoAdminListView(View):
+    """Stock overview - shows all shoes with their stock levels"""
+
+    template_name = "management/zapato_list.html"
+
+    def get(self, request):
+        zapatos = Zapato.objects.select_related("marca", "categoria").prefetch_related("tallas").all()
+
+        # Calculate total stock for each zapato
+        for zapato in zapatos:
+            zapato.total_stock = zapato.tallas.aggregate(total=Sum("stock"))["total"] or 0
+
+        return render(request, self.template_name, {"zapatos": zapatos})
+
+
+@method_decorator(staff_required, name="dispatch")
+class ZapatoAdminDetailView(View):
+    """Edit shoe details and manage image"""
+
+    template_name = "management/zapato_detail.html"
+
+    def get(self, request, zapato_id):
+        zapato = get_object_or_404(Zapato, pk=zapato_id)
+        form = ZapatoForm(instance=zapato)
+
+        # Calculate total stock
+        total_stock = zapato.tallas.aggregate(total=Sum("stock"))["total"] or 0
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "zapato": zapato,
+                "form": form,
+                "total_stock": total_stock,
+            },
+        )
+
+    def post(self, request, zapato_id):
+        zapato = get_object_or_404(Zapato, pk=zapato_id)
+        form = ZapatoForm(request.POST, request.FILES, instance=zapato)
+
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, "Zapato actualizado correctamente.")
+                return redirect("zapato_admin_detail", zapato_id=zapato.id)
+            except Exception:
+                messages.error(request, "Ha ocurrido un error al actualizar el zapato.")
+
+        total_stock = zapato.tallas.aggregate(total=Sum("stock"))["total"] or 0
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "zapato": zapato,
+                "form": form,
+                "total_stock": total_stock,
+            },
+        )
+
+
+@method_decorator(staff_required, name="dispatch")
+class ZapatoAdminCreateView(View):
+    """Create a new shoe"""
+
+    template_name = "management/zapato_create.html"
+
+    def get(self, request):
+        form = ZapatoForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = ZapatoForm(request.POST)
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    zapato = form.save()
+
+                    # Create all sizes (34-49) with 0 stock by default
+                    for talla in range(34, 50):
+                        TallaZapato.objects.create(zapato=zapato, talla=talla, stock=0)
+
+                messages.success(request, f"Zapato {zapato.nombre} creado correctamente.")
+                return redirect("zapato_admin_detail", zapato_id=zapato.id)
+            except Exception:
+                messages.error(request, "Ha ocurrido un error al crear el zapato.")
+
+        return render(request, self.template_name, {"form": form})
+
+
+@method_decorator(staff_required, name="dispatch")
+class ZapatoStockEditView(View):
+    """Edit stock levels for all sizes of a shoe - prevents data races"""
+
+    template_name = "management/zapato_stock.html"
+
+    def get(self, request, zapato_id):
+        zapato = get_object_or_404(Zapato, pk=zapato_id)
+        tallas = zapato.tallas.all().order_by("talla")
+
+        return render(request, self.template_name, {"zapato": zapato, "tallas": tallas})
+
+    def post(self, request, zapato_id):
+        zapato = get_object_or_404(Zapato, pk=zapato_id)
+        action = request.POST.get("action")
+
+        try:
+            if action == "add":
+                # Add stock to a specific size
+                talla_id = request.POST.get("talla_id")
+                amount = int(request.POST.get("amount", 1))
+                talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
+
+                # Use F() expression to prevent race conditions
+                talla.stock = F("stock") + amount
+                talla.save()
+                talla.refresh_from_db()  # Reload to get actual value
+
+                messages.success(request, f"Se añadieron {amount} unidades a la talla {talla.talla}.")
+
+            elif action == "remove":
+                # Remove stock from a specific size
+                talla_id = request.POST.get("talla_id")
+                amount = int(request.POST.get("amount", 1))
+                talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
+
+                # Ensure we don't go negative
+                if talla.stock >= amount:
+                    talla.stock = F("stock") - amount
+                    talla.save()
+                    talla.refresh_from_db()
+                    messages.success(request, f"Se quitaron {amount} unidades de la talla {talla.talla}.")
+                else:
+                    messages.error(request, f"No hay suficiente stock. Stock actual: {talla.stock}")
+
+            elif action == "delete":
+                # Delete a size
+                talla_id = request.POST.get("talla_id")
+                talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
+                talla_num = talla.talla
+                talla.delete()
+                messages.success(request, f"Talla {talla_num} eliminada correctamente.")
+
+            elif action == "create":
+                # Create a new size
+                talla_num = int(request.POST.get("talla"))
+                stock_inicial = int(request.POST.get("stock_inicial", 0))
+
+                # Check if size already exists
+                if zapato.tallas.filter(talla=talla_num).exists():
+                    messages.error(request, f"La talla {talla_num} ya existe para este zapato.")
+                else:
+                    TallaZapato.objects.create(zapato=zapato, talla=talla_num, stock=stock_inicial)
+                    messages.success(request, f"Talla {talla_num} creada con {stock_inicial} unidades.")
+
+            else:
+                messages.error(request, "Acción no válida.")
+
+        except ValueError:
+            messages.error(request, "Valores inválidos en el formulario.")
+        except Exception as e:
+            messages.error(request, f"Ha ocurrido un error: {str(e)}")
+
+        # Redirect to avoid form resubmission
+        return redirect("zapato_stock_edit", zapato_id=zapato.id)
+
+
+@method_decorator(staff_required, name="dispatch")
+class ZapatoAdminDeleteView(View):
+    """Delete a shoe"""
+
+    template_name = "management/zapato_confirm_delete.html"
+
+    def get(self, request, zapato_id):
+        zapato = get_object_or_404(Zapato, pk=zapato_id)
+        return render(request, self.template_name, {"zapato": zapato})
+
+    def post(self, request, zapato_id):
+        zapato = get_object_or_404(Zapato, pk=zapato_id)
+        zapato_nombre = zapato.nombre
+        zapato.delete()
+        messages.success(request, f"Zapato {zapato_nombre} eliminado correctamente.")
+        return redirect("zapato_admin_list")
+
+
+# ==================== MARCA (BRAND) MANAGEMENT VIEWS ====================
+
+
+@method_decorator(staff_required, name="dispatch")
+class MarcaListView(View):
+    """List all brands"""
+
+    template_name = "management/marca_list.html"
+
+    def get(self, request):
+        marcas = Marca.objects.all().order_by("nombre")
+        return render(request, self.template_name, {"marcas": marcas})
+
+
+@method_decorator(staff_required, name="dispatch")
+class MarcaCreateView(View):
+    """Create a new brand"""
+
+    template_name = "management/marca_create.html"
+
+    def get(self, request):
+        form = MarcaForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = MarcaForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            try:
+                marca = form.save()
+                messages.success(request, f"Marca {marca.nombre} creada correctamente.")
+                return redirect("marca_list")
+            except Exception:
+                messages.error(request, "Ha ocurrido un error al crear la marca.")
+
+        return render(request, self.template_name, {"form": form})
+
+
+@method_decorator(staff_required, name="dispatch")
+class MarcaEditView(View):
+    """Edit a brand"""
+
+    template_name = "management/marca_edit.html"
+
+    def get(self, request, marca_id):
+        marca = get_object_or_404(Marca, pk=marca_id)
+        form = MarcaForm(instance=marca)
+        return render(request, self.template_name, {"marca": marca, "form": form})
+
+    def post(self, request, marca_id):
+        marca = get_object_or_404(Marca, pk=marca_id)
+        form = MarcaForm(request.POST, request.FILES, instance=marca)
+
+        if form.is_valid():
+            try:
+                marca = form.save()
+                messages.success(request, f"Marca {marca.nombre} actualizada correctamente.")
+                return redirect("marca_list")
+            except Exception:
+                messages.error(request, "Ha ocurrido un error al actualizar la marca.")
+
+        return render(request, self.template_name, {"marca": marca, "form": form})
+
+
+@method_decorator(staff_required, name="dispatch")
+class MarcaDeleteView(View):
+    """Delete a brand"""
+
+    template_name = "management/marca_confirm_delete.html"
+
+    def get(self, request, marca_id):
+        marca = get_object_or_404(Marca, pk=marca_id)
+
+        # Check if marca has associated zapatos
+        zapatos_count = marca.zapatos.count()
+
+        return render(request, self.template_name, {"marca": marca, "zapatos_count": zapatos_count})
+
+    def post(self, request, marca_id):
+        marca = get_object_or_404(Marca, pk=marca_id)
+
+        # Check if marca has associated zapatos
+        if marca.zapatos.exists():
+            messages.error(request, "No se puede eliminar la marca porque tiene zapatos asociados.")
+            return redirect("marca_list")
+
+        marca_nombre = marca.nombre
+        marca.delete()
+        messages.success(request, f"Marca {marca_nombre} eliminada correctamente.")
+        return redirect("marca_list")
+
+
+# ==================== CATEGORIA (CATEGORY) MANAGEMENT VIEWS ====================
+
+
+@method_decorator(staff_required, name="dispatch")
+class CategoriaListView(View):
+    """List all categories"""
+
+    template_name = "management/categoria_list.html"
+
+    def get(self, request):
+        categorias = Categoria.objects.all().order_by("nombre")
+        return render(request, self.template_name, {"categorias": categorias})
+
+
+@method_decorator(staff_required, name="dispatch")
+class CategoriaCreateView(View):
+    """Create a new category"""
+
+    template_name = "management/categoria_create.html"
+
+    def get(self, request):
+        form = CategoriaForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = CategoriaForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            try:
+                categoria = form.save()
+                messages.success(request, f"Categoría {categoria.nombre} creada correctamente.")
+                return redirect("categoria_list")
+            except Exception:
+                messages.error(request, "Ha ocurrido un error al crear la categoría.")
+
+        return render(request, self.template_name, {"form": form})
+
+
+@method_decorator(staff_required, name="dispatch")
+class CategoriaEditView(View):
+    """Edit a category"""
+
+    template_name = "management/categoria_edit.html"
+
+    def get(self, request, categoria_id):
+        categoria = get_object_or_404(Categoria, pk=categoria_id)
+        form = CategoriaForm(instance=categoria)
+        return render(request, self.template_name, {"categoria": categoria, "form": form})
+
+    def post(self, request, categoria_id):
+        categoria = get_object_or_404(Categoria, pk=categoria_id)
+        form = CategoriaForm(request.POST, request.FILES, instance=categoria)
+
+        if form.is_valid():
+            try:
+                categoria = form.save()
+                messages.success(request, f"Categoría {categoria.nombre} actualizada correctamente.")
+                return redirect("categoria_list")
+            except Exception:
+                messages.error(request, "Ha ocurrido un error al actualizar la categoría.")
+
+        return render(request, self.template_name, {"categoria": categoria, "form": form})
+
+
+@method_decorator(staff_required, name="dispatch")
+class CategoriaDeleteView(View):
+    """Delete a category"""
+
+    template_name = "management/categoria_confirm_delete.html"
+
+    def get(self, request, categoria_id):
+        categoria = get_object_or_404(Categoria, pk=categoria_id)
+
+        # Check if categoria has associated zapatos
+        zapatos_count = categoria.zapatos.count()
+
+        return render(request, self.template_name, {"categoria": categoria, "zapatos_count": zapatos_count})
+
+    def post(self, request, categoria_id):
+        categoria = get_object_or_404(Categoria, pk=categoria_id)
+
+        # Categoria can be deleted even if it has zapatos (SET_NULL on delete)
+        categoria_nombre = categoria.nombre
+        categoria.delete()
+        messages.success(request, f"Categoría {categoria_nombre} eliminada correctamente.")
+        return redirect("categoria_list")
