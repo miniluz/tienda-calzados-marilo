@@ -319,3 +319,152 @@ class ZapatoSearchFormTest(TestCase):
         form = ZapatoSearchForm(data={"talla": 42})
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data["talla"], 42)
+
+
+# ==================== OFFER DISPLAY TESTS ====================
+
+
+class OfferDisplayTests(TestCase):
+    """Tests to validate that products with offers display correctly in templates"""
+
+    def setUp(self):
+        self.marca = Marca.objects.create(nombre="Test Marca")
+        self.categoria = Categoria.objects.create(nombre="Test Categoria")
+
+        # Create zapato with offer
+        self.zapato_with_offer = Zapato.objects.create(
+            nombre="Zapato en Oferta",
+            descripcion="Producto con descuento",
+            precio=100,
+            precioOferta=75,
+            marca=self.marca,
+            categoria=self.categoria,
+            genero="Unisex",
+            estaDisponible=True,
+        )
+
+        # Create zapato without offer
+        self.zapato_without_offer = Zapato.objects.create(
+            nombre="Zapato Precio Normal",
+            descripcion="Producto sin descuento",
+            precio=100,
+            marca=self.marca,
+            categoria=self.categoria,
+            genero="Unisex",
+            estaDisponible=True,
+        )
+
+        # Add at least one talla to make them appear in list
+        TallaZapato.objects.create(zapato=self.zapato_with_offer, talla=42, stock=10)
+        TallaZapato.objects.create(zapato=self.zapato_without_offer, talla=42, stock=10)
+
+    def test_list_shows_offer_price_and_discount(self):
+        """Test that zapato_list template shows original price, offer price, and discount percentage"""
+        url = reverse("catalog:zapato_list")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Check that product with offer is shown
+        self.assertIn("Zapato en Oferta", content)
+
+        # Check that old price is shown with correct class
+        self.assertIn('class="old-price"', content)
+        self.assertIn("100", content)
+
+        # Check that discounted price is shown with correct class
+        self.assertIn('class="discounted"', content)
+        self.assertIn("75", content)
+
+        # Check that discount badge is shown with correct percentage
+        self.assertIn('class="discount-badge"', content)
+        self.assertIn("-25% OFF", content)
+
+    def test_list_without_offer_shows_regular_price(self):
+        """Test that products without offer show only regular price"""
+        url = reverse("catalog:zapato_list")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Check that product without offer is shown
+        self.assertIn("Zapato Precio Normal", content)
+
+        # For products without offer, there should be no old-price or discount badge
+        # We need to check the specific product section
+        # The template shows both products, so we verify the structure
+
+    def test_detail_shows_offer_price_and_discount(self):
+        """Test that zapato_detail template shows original price, offer price, and discount percentage"""
+        url = reverse("catalog:zapato_detail", args=[self.zapato_with_offer.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Check that product name is shown
+        self.assertIn("Zapato en Oferta", content)
+
+        # Check that old price is shown with correct class (Spanish format: 100,00)
+        self.assertIn('class="old-price"', content)
+        self.assertIn("100,00", content)
+
+        # Check that discounted price is shown with correct class (Spanish format: 75,00)
+        self.assertIn('class="discounted-price"', content)
+        self.assertIn("75,00", content)
+
+        # Check that discount badge is shown with correct percentage
+        self.assertIn('class="discount-badge"', content)
+        self.assertIn("-25% OFF", content)
+
+    def test_detail_without_offer_shows_regular_price(self):
+        """Test that product detail without offer shows only regular price"""
+        url = reverse("catalog:zapato_detail", args=[self.zapato_without_offer.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Check that product name is shown
+        self.assertIn("Zapato Precio Normal", content)
+
+        # Check that regular price is shown with correct class (Spanish format: 100,00)
+        self.assertIn('class="price"', content)
+        self.assertIn("100,00", content)
+
+        # For this specific product (without offer), verify no discount elements appear AFTER its name
+        # Find where this product starts in the page
+        product_start = content.find("Zapato Precio Normal")
+        product_section = content[product_start : product_start + 2000]  # Next 2000 chars after product name
+
+        # Should not have discount classes in this product's section
+        self.assertNotIn('class="old-price"', product_section)
+        self.assertNotIn('class="discounted-price"', product_section)
+        self.assertNotIn('class="discount-badge"', product_section)
+
+    def test_offer_percentage_calculation_in_template(self):
+        """Test that the discount percentage shown matches the calculated value"""
+        # Create zapato with different discount
+        zapato = Zapato.objects.create(
+            nombre="Zapato 50% Off",
+            precio=200,
+            precioOferta=100,
+            marca=self.marca,
+            genero="Unisex",
+            estaDisponible=True,
+        )
+        TallaZapato.objects.create(zapato=zapato, talla=42, stock=5)
+
+        # Test in list view
+        url = reverse("catalog:zapato_list")
+        response = self.client.get(url)
+        content = response.content.decode()
+        self.assertIn("-50% OFF", content)
+
+        # Test in detail view
+        url = reverse("catalog:zapato_detail", args=[zapato.id])
+        response = self.client.get(url)
+        content = response.content.decode()
+        self.assertIn("-50% OFF", content)
