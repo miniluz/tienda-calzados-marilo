@@ -253,7 +253,7 @@
 
         <div class="sizes">
             <h5>Seleccionar talla:</h5>
-            {% for talla_obj in zapato.tallas.all %}
+            {% for talla_obj in tallas_ordenadas %}
                 <input type="radio" name="size" id="size-{{ talla_obj.talla }}" value="{{ talla_obj.talla }}" {% if not zapato.estaDisponible or talla_obj.stock == 0 %}disabled{% endif %}>
                 <label for="size-{{ talla_obj.talla }}" {% if not zapato.estaDisponible or talla_obj.stock == 0 %}class="disabled"{% endif %}>
                     Talla {{ talla_obj.talla }}

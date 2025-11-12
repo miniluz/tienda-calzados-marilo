@@ -59,6 +59,12 @@ class ZapatoDetailView(DetailView):
     template_name = "catalog/zapato_detail.html"
     context_object_name = "zapato"
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # Sort tallas by size (ascending)
+        ctx["tallas_ordenadas"] = self.object.tallas.all().order_by("talla")
+        return ctx
+
 
 def zapato_list_api(request):
     zapatos = list(
