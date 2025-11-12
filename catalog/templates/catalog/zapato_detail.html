@@ -250,12 +250,7 @@
             {% if zapato.precioOferta %}
                 <span class="old-price">{{ zapato.precio|floatformat:2 }} €</span>
                 <span class="discounted-price">{{ zapato.precioOferta|floatformat:2 }} €</span>
-                {% with discount_percent=zapato.precio|add:"-"|add:zapato.precioOferta|floatformat:0 %}
-                    {% widthratio zapato.precio zapato.precioOferta 100 as discount_calc %}
-                    {% with discount=100|add:"-"|add:discount_calc %}
-                        <span class="discount-badge">-{{ discount }}% OFF</span>
-                    {% endwith %}
-                {% endwith %}
+                <span class="discount-badge">-{{ zapato.descuento_porcentaje }}% OFF</span>
             {% else %}
                 <span class="price">{{ zapato.precio|floatformat:2 }} €</span>
             {% endif %}

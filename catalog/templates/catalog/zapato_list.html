@@ -77,6 +77,16 @@
         font-weight: bold;
     }
 
+    .product-card .discount-badge {
+        display: inline-block;
+        background-color: #e74c3c;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        margin-left: 5px;
+    }
+
     .product-card .add-button {
         padding: 10px;
         background-color: #1a1a4d;
@@ -173,6 +183,7 @@
                 {% if zapato.precioOferta %}
                     <span class="old-price">{{ zapato.precio }} €</span>
                     <span class="discounted">{{ zapato.precioOferta }} €</span>
+                    <span class="discount-badge">-{{ zapato.descuento_porcentaje }}% OFF</span>
                 {% else %}
                     <span>{{ zapato.precio }} €</span>
                 {% endif %}

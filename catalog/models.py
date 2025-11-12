@@ -33,6 +33,13 @@ class Zapato(models.Model):
     def get_absolute_url(self):
         return reverse("catalog:zapato_detail", args=[str(self.id)])
 
+    @property
+    def descuento_porcentaje(self):
+        """Calculate discount percentage if there's an offer price"""
+        if self.precioOferta and self.precio > 0:
+            return round(((self.precio - self.precioOferta) / self.precio) * 100)
+        return 0
+
     class Meta:
         ordering = ["-fechaCreacion"]
         verbose_name = "Zapato"
