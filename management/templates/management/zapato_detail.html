@@ -148,7 +148,7 @@
                             <!-- Destacado -->
                             <div class="mb-3 form-check">
                                 {{ form.estaDestacado }}
-                                {{ form.estaDestacado.label_tag }}
+                                <label for="{{ form.estaDestacado.id_for_label }}" class="form-check-label">Destacado</label>
                                 {% if form.estaDestacado.errors %}
                                     <div class="text-danger small">{{ form.estaDestacado.errors }}</div>
                                 {% endif %}
@@ -157,7 +157,7 @@
                             <!-- Disponible -->
                             <div class="mb-3 form-check">
                                 {{ form.estaDisponible }}
-                                {{ form.estaDisponible.label_tag }}
+                                <label for="{{ form.estaDisponible.id_for_label }}" class="form-check-label">Disponible</label>
                                 {% if form.estaDisponible.errors %}
                                     <div class="text-danger small">{{ form.estaDisponible.errors }}</div>
                                 {% endif %}

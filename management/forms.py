@@ -195,6 +195,10 @@ class ZapatoForm(forms.ModelForm):
             "estaDisponible": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "estaDestacado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+        labels = {
+            "estaDisponible": "Disponible",
+            "estaDestacado": "Destacado",
+        }
 
 
 class TallaZapatoForm(forms.ModelForm):
