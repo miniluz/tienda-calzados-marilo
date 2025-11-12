@@ -11,7 +11,7 @@
 
     <!-- Custom CSS - Primary Color Override -->
     {% load static %}
-    <link href="{% static 'css/custom.css' %}" rel="stylesheet">
+    <link href="{% static '/css/custom.css' %}" rel="stylesheet">
 
     <style>
         /* Sticky footer styles */
@@ -83,67 +83,61 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                                {# If the view provides a `form`, render the filters dropdown next to the search bar so both appear together. #}
-                                {% if form %}
-                                <div class="d-flex mx-auto align-items-center gap-2">
-                                    <div class="dropdown">
-                                        <button class="btn btn-outline-light dropdown-toggle" type="button" id="navbarFiltersBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                                            Filtros
-                                        </button>
-                                        <div class="dropdown-menu dropdown-menu-end p-3 shadow" aria-labelledby="navbarFiltersBtn" style="min-width: 320px;">
-                                            <form method="get" action="{% url 'catalog:zapato_list' %}" id="navbar-filters-form">
-                                                <input type="hidden" name="q" value="{{ request.GET.q }}">
-                                                <div class="mb-2">
-                                                    <label for="id_categoria_nav" class="form-label mb-1">Categoría</label>
-                                                    {{ form.categoria }}
-                                                </div>
-                                                <div class="mb-2">
-                                                    <label for="id_marca_nav" class="form-label mb-1">Marca</label>
-                                                    {{ form.marca }}
-                                                </div>
-                                                <div class="mb-2">
-                                                    <label for="id_genero_nav" class="form-label mb-1">Género</label>
-                                                    {{ form.genero }}
-                                                </div>
-                                                <div class="d-flex gap-2 mt-3">
-                                                    <button type="submit" class="btn btn-light">Aplicar</button>
-                                                    <button type="button" class="btn btn-outline-light" id="navbar-filters-reset">Limpiar</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-
-                                    <!-- Search Form beside filters -->
-                                    <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex">
-                                        <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 250px;">
-                                        <button class="btn btn-outline-light" type="submit">Buscar</button>
-                                    </form>
+                {# If the view provides a `form`, render the filters dropdown next to the search bar so both appear together. #}
+                {% if form %}
+                <div class="d-flex mx-auto align-items-center gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" id="navbarFiltersBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                            Filtros
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end p-3 shadow" aria-labelledby="navbarFiltersBtn" style="min-width: 320px;">
+                            <form method="get" action="{% url 'catalog:zapato_list' %}" id="navbar-filters-form">
+                                <input type="hidden" name="q" value="{{ request.GET.q }}">
+                                <div class="mb-2">
+                                    <label for="id_categoria_nav" class="form-label mb-1">Categoría</label>
+                                    {{ form.categoria }}
                                 </div>
-                                {% else %}
-                                <!-- Search Form (no filters available) -->
-                                <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex mx-auto">
-                                    <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 250px;">
-                                    <button class="btn btn-outline-light" type="submit">Buscar</button>
-                                </form>
-                                {% endif %}
+                                <div class="mb-2">
+                                    <label for="id_marca_nav" class="form-label mb-1">Marca</label>
+                                    {{ form.marca }}
+                                </div>
+                                <div class="mb-2">
+                                    <label for="id_genero_nav" class="form-label mb-1">Género</label>
+                                    {{ form.genero }}
+                                </div>
+                                <div class="d-flex gap-2 mt-3">
+                                    <button type="submit" class="btn btn-primary">Aplicar</button>
+                                    <button type="button" class="btn btn-light" id="navbar-filters-reset">Limpiar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Search Form beside filters -->
+                    <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex">
+                        <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 250px;">
+                        <button class="btn btn-outline-light" type="submit">Buscar</button>
+                    </form>
+                </div>
+                {% else %}
+                <!-- Search Form (no filters available) -->
+                <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex mx-auto">
+                    <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 250px;">
+                    <button class="btn btn-outline-light" type="submit">Buscar</button>
+                </form>
+                {% endif %}
 
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
-                        {% if not user.is_staff %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" title="Carrito">
-                                    🛒
-                                </a>
-                            </li>
-                        {% endif %}
                         {% if user.is_staff %}
-                            <li class="nav-item">
+                            <li class="nav-item me-2">
                                 <a class="nav-link" href="{% url 'admin_dashboard' %}">Panel de Administración</a>
                             </li>
                         {% endif %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                👤 {{ user.first_name|default:user.username }}
+                                <i class="bi bi-person-circle me-1"></i>
+                                {{ user.first_name|default:user.username }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 {% if not user.is_staff %}
@@ -163,7 +157,8 @@
                     {% else %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownGuest" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                👤 Mi Cuenta
+                                <i class="bi bi-person-circle me-1"></i>
+                                Mi Cuenta
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownGuest">
                                 <li><a class="dropdown-item" href="{% url 'login' %}">Iniciar sesión</a></li>
@@ -218,9 +213,9 @@
     <footer class="bg-dark text-white text-center py-4 mt-5">
         <div class="container">
             <p class="mb-2">
-                <span class="me-3">Avenida del ejemplo nº 0</span> |
-                <span class="mx-3">(+00) 999-999-999</span> |
-                <span class="ms-3">CalzadosMarilo@example.com</span>
+                <span class="me-3">Avenida del Ejemplo nº 1</span> |
+                <span class="mx-3">(+34) 999-999-999</span> |
+                <span class="ms-3">info@calzmarilo.es</span>
             </p>
             <p class="mb-0 small">&copy; 2025 Calzados Marilo. Todos los derechos reservados.</p>
         </div>

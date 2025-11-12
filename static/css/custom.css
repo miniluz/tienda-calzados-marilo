@@ -48,6 +48,12 @@
     border-color: #0f0f38 !important;
 }
 
+/*
+.btn-outline-light {
+    --bs-btn-color: black !important;
+}
+*/
+
 /* Links */
 a {
     color: #1a1a4d;
