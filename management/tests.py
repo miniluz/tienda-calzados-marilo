@@ -540,3 +540,131 @@ class CategoriaManagementTests(TestCase):
 
         zapato.refresh_from_db()
         self.assertIsNone(zapato.categoria)
+
+
+# ==================== CUSTOMER FILTERING TESTS ====================
+
+
+class CustomerFilteringTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+        self.admin_user = User.objects.create_user(
+            username="admin@example.com", email="admin@example.com", password="AdminPass123!", is_staff=True
+        )
+
+        # Create test customers with different data
+        self.customer1_user = User.objects.create_user(
+            username="john.doe@example.com",
+            email="john.doe@example.com",
+            password="Pass123!",
+            first_name="John",
+            last_name="Doe",
+        )
+        self.customer1 = Customer.objects.create(
+            user=self.customer1_user,
+            phone_number="612345678",
+            address="Calle Principal 123",
+            city="Madrid",
+            postal_code="28001",
+        )
+
+        self.customer2_user = User.objects.create_user(
+            username="jane.smith@example.com",
+            email="jane.smith@example.com",
+            password="Pass123!",
+            first_name="Jane",
+            last_name="Smith",
+        )
+        self.customer2 = Customer.objects.create(
+            user=self.customer2_user,
+            phone_number="687654321",
+            address="Avenida Secundaria 456",
+            city="Barcelona",
+            postal_code="08001",
+        )
+
+        self.customer3_user = User.objects.create_user(
+            username="bob.johnson@test.com",
+            email="bob.johnson@test.com",
+            password="Pass123!",
+            first_name="Bob",
+            last_name="Johnson",
+        )
+        self.customer3 = Customer.objects.create(
+            user=self.customer3_user,
+            phone_number="611111111",
+            address="Plaza Central 789",
+            city="Madrid",
+            postal_code="28002",
+        )
+
+        self.client.login(username="admin@example.com", password="AdminPass123!")
+
+    def test_customer_filter_by_name(self):
+        """Test filtering customers by first name"""
+        response = self.client.get(reverse("customer_list"), {"nombre": "John"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 1)
+        self.assertEqual(customers[0].user.first_name, "John")
+
+    def test_customer_filter_by_last_name(self):
+        """Test filtering customers by last name"""
+        response = self.client.get(reverse("customer_list"), {"nombre": "Smith"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 1)
+        self.assertEqual(customers[0].user.last_name, "Smith")
+
+    def test_customer_filter_by_email(self):
+        """Test filtering customers by email"""
+        response = self.client.get(reverse("customer_list"), {"email": "john.doe"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 1)
+        self.assertEqual(customers[0].user.email, "john.doe@example.com")
+
+    def test_customer_filter_by_phone(self):
+        """Test filtering customers by phone number"""
+        response = self.client.get(reverse("customer_list"), {"telefono": "612345678"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 1)
+        self.assertEqual(customers[0].phone_number, "612345678")
+
+    def test_customer_filter_combined(self):
+        """Test filtering customers with multiple filters"""
+        response = self.client.get(reverse("customer_list"), {"nombre": "John", "email": "example.com"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 1)
+        self.assertEqual(customers[0].user.first_name, "John")
+
+    def test_customer_filter_empty_results(self):
+        """Test filtering with no matching results"""
+        response = self.client.get(reverse("customer_list"), {"nombre": "NonExistent"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 0)
+
+    def test_customer_filter_case_insensitive(self):
+        """Test that filtering is case insensitive"""
+        response = self.client.get(reverse("customer_list"), {"nombre": "john"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 1)
+        self.assertEqual(customers[0].user.first_name, "John")
+
+        response = self.client.get(reverse("customer_list"), {"email": "JOHN.DOE"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        self.assertEqual(len(customers), 1)
+
+    def test_customer_filter_partial_match(self):
+        """Test that filtering allows partial matches"""
+        response = self.client.get(reverse("customer_list"), {"nombre": "Jo"})
+        self.assertEqual(response.status_code, 200)
+        customers = response.context["customers"]
+        # Should match both "John" and "Johnson"
+        self.assertEqual(len(customers), 2)
