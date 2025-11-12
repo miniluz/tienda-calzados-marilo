@@ -170,13 +170,11 @@
     {% with total_stock=zapato.tallas.all|length %}
     <div class="product-card {% if total_stock == 0 %}out-of-stock{% endif %}" data-product-id="{{ zapato.id }}" data-tallas='[{% for talla in zapato.tallas.all %}{"talla": {{ talla.talla }}, "stock": {{ talla.stock }}}{% if not forloop.last %},{% endif %}{% endfor %}]'>
         <a href="{{ zapato.get_absolute_url }}">
-            {% with zapato.imagenes.all|first as main_image %}
-                {% if main_image and main_image.imagen %}
-                    <img src="{{ main_image.imagen.url }}" alt="{{ zapato.nombre }}">
-                {% else %}
-                    <img src="https://via.placeholder.com/250x200.png?text=Sin+imagen" alt="Sin imagen">
-                {% endif %}
-            {% endwith %}
+            {% if zapato.imagen %}
+                <img src="{{ zapato.imagen.url }}" alt="{{ zapato.nombre }}">
+            {% else %}
+                <img src="https://via.placeholder.com/250x200.png?text=Sin+imagen" alt="Sin imagen">
+            {% endif %}
             <h2>{{ zapato.nombre }}</h2>
             <p>{{ zapato.descripcion|truncatewords:10 }}</p>
             <p class="price">

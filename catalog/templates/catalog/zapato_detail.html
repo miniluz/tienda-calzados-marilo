@@ -205,13 +205,11 @@
 
 <div class="product-detail-container">
     <div class="product-image">
-        {% with zapato.imagenes.all|first as main_image %}
-            {% if main_image and main_image.imagen %}
-                <img src="{{ main_image.imagen.url }}" alt="{{ zapato.nombre }}">
-            {% else %}
-                <img src="https://via.placeholder.com/400x400.png?text=Sin+imagen" alt="Sin imagen">
-            {% endif %}
-        {% endwith %}
+        {% if zapato.imagen %}
+            <img src="{{ zapato.imagen.url }}" alt="{{ zapato.nombre }}">
+        {% else %}
+            <img src="https://via.placeholder.com/400x400.png?text=Sin+imagen" alt="Sin imagen">
+        {% endif %}
     </div>
 
     <div class="product-info">
