@@ -19,7 +19,7 @@ class ZapatoListView(ListView):
         max_precio = self.request.GET.get("max_precio")
 
         if q:
-            qs = qs.filter(Q(nombre__icontains=q) | Q(marca__nombre__icontains=q))
+            qs = qs.filter(Q(nombre__icontains=q) | Q(marca__nombre__icontains=q) | Q(descripcion__icontains=q))
 
         if talla:
             try:
