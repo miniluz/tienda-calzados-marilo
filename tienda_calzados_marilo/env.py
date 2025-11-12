@@ -9,6 +9,7 @@ load_dotenv()
 class EnvConfig(NamedTuple):
     DJANGO_DEBUG: bool
     DJANGO_SECRET_KEY: str
+    ALLOWED_HOSTS: list[str]
     ADMIN_PASSWORD: str
     USE_SQLITE: bool
     POSTGRES_HOST: str
@@ -34,6 +35,10 @@ def getBoolFromEnv(name: str) -> bool:
     return getFromEnv(name, True).strip() != ""
 
 
+def getListFromEnv(name: str) -> list[str]:
+    return getFromEnv(name, True).split(",")
+
+
 def getEnvConfig() -> EnvConfig:
     global envConfig
 
@@ -45,6 +50,7 @@ def getEnvConfig() -> EnvConfig:
     envConfig = EnvConfig(
         DJANGO_DEBUG=getBoolFromEnv("DJANGO_DEBUG"),
         DJANGO_SECRET_KEY=getFromEnv("DJANGO_SECRET_KEY"),
+        ALLOWED_HOSTS=getListFromEnv("ALLOWED_HOSTS"),
         ADMIN_PASSWORD=getFromEnv("ADMIN_PASSWORD"),
         USE_SQLITE=getBoolFromEnv("USE_SQLITE"),
         POSTGRES_HOST=getFromEnv("POSTGRES_HOST", use_sqlite),
