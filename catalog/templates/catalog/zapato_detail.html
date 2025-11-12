@@ -109,6 +109,10 @@
         color: #dc3545;
     }
 
+    .stock-status.unavailable {
+        color: #6c757d;
+    }
+
     .price-section {
         margin: 20px 0;
     }
@@ -250,8 +254,8 @@
         <div class="sizes">
             <h5>Seleccionar talla:</h5>
             {% for talla_obj in zapato.tallas.all %}
-                <input type="radio" name="size" id="size-{{ talla_obj.talla }}" value="{{ talla_obj.talla }}" data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}" {% if talla_obj.stock == 0 %}disabled{% endif %}>
-                <label for="size-{{ talla_obj.talla }}" {% if talla_obj.stock == 0 %}class="disabled"{% endif %}>
+                <input type="radio" name="size" id="size-{{ talla_obj.talla }}" value="{{ talla_obj.talla }}" {% if not zapato.estaDisponible or talla_obj.stock == 0 %}disabled{% endif %}>
+                <label for="size-{{ talla_obj.talla }}" {% if not zapato.estaDisponible or talla_obj.stock == 0 %}class="disabled"{% endif %}>
                     Talla {{ talla_obj.talla }}
                 </label>
             {% empty %}
@@ -294,31 +298,27 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const sizeRadios = document.querySelectorAll('.sizes input[type="radio"]:not(:disabled)');
-        const allSizeRadios = document.querySelectorAll('.sizes input[type="radio"]');
         const addCartBtn = document.querySelector('.add-cart');
         const buyNowBtn = document.querySelector('.buy-now');
         const sizeNotice = document.querySelector('.size-selection-notice');
         const stockStatusDisplay = document.getElementById('stock-status-display');
+        const isProductAvailable = {{ zapato.estaDisponible|yesno:"true,false" }};
 
-        // Calculate total stock
-        let totalStock = 0;
-        allSizeRadios.forEach(radio => {
-            const stock = parseInt(radio.dataset.stock) || 0;
-            totalStock += stock;
-        });
-
-        // Update stock status display
-        if (totalStock > 0) {
+        // Check product availability first (takes precedence)
+        if (!isProductAvailable) {
+            stockStatusDisplay.className = 'stock-status unavailable';
+            stockStatusDisplay.innerHTML = '✗ No disponible';
+            // Don't show size selection notice for unavailable products
+        } else if (sizeRadios.length > 0) {
+            // Product is available and has stock
             stockStatusDisplay.className = 'stock-status in-stock';
             stockStatusDisplay.innerHTML = '✓ En stock';
+            // Show the size selection notice
+            sizeNotice.style.display = 'flex';
         } else {
+            // Product is available but out of stock
             stockStatusDisplay.className = 'stock-status out-of-stock';
             stockStatusDisplay.innerHTML = '✗ Sin stock';
-        }
-
-        // Only show the notice if there are available sizes
-        if (sizeRadios.length > 0) {
-            sizeNotice.style.display = 'flex';
         }
 
         sizeRadios.forEach(radio => {
