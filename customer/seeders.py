@@ -144,13 +144,13 @@ def seed():
         last_name = f"{last_name1} {last_name2}"
 
         # Generate email
-        email = f"{first_name.lower()}.{last_name1.lower()}{i+1}@example.com"
+        email = f"{first_name.lower()}.{last_name1.lower()}{i + 1}@example.com"
 
         # Create user
         user = User.objects.create_user(
             username=email,
             email=email,
-            password="password123",
+            password="example123*",
             first_name=first_name,
             last_name=last_name,
         )
@@ -175,7 +175,11 @@ def seed():
 
         # Create customer profile
         customer = Customer.objects.create(
-            user=user, phone_number=phone_number, address=address, city=city, postal_code=postal_code
+            user=user,
+            phone_number=phone_number,
+            address=address,
+            city=city,
+            postal_code=postal_code,
         )
         customers.append(customer)
 

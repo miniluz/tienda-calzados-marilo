@@ -86,11 +86,16 @@ def seed():
 
         # Generate email with role variety
         role = roles[i % len(roles)]
-        email = f"{role}.{first_name.lower()}{i+1}@marilocal.com"
+        email = f"{role}.{first_name.lower()}{i + 1}@calzmarilo.es"
 
         # Create admin user
         user = User.objects.create_user(
-            username=email, email=email, password="admin123", first_name=first_name, last_name=last_name, is_staff=True
+            username=email,
+            email=email,
+            password="example123*",
+            first_name=first_name,
+            last_name=last_name,
+            is_staff=True,
         )
 
         admins.append(user)
