@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Administrador - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4">Confirmar Eliminación</h2>
+
+                <div class="alert alert-warning">
+                    <strong>¿Está seguro de que desea eliminar este administrador?</strong>
+                    <p class="mb-0 mt-2">Esta acción no se puede deshacer.</p>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Nombre:</strong> {{ admin_user.first_name }} {{ admin_user.last_name }}
+                </div>
+
+                <div class="mb-4">
+                    <strong>Email:</strong> {{ admin_user.email }}
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2 justify-content-between">
+                        <a href="{% url 'admin_list' %}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-danger">Eliminar Administrador</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

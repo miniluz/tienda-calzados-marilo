@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Administradores - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Gestión de Administradores</h2>
+            <a href="{% url 'admin_create' %}" class="btn btn-primary">Nuevo Administrador</a>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-body">
+                {% if admins %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Fecha de registro</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for admin in admins %}
+                                    <tr>
+                                        <td>{{ admin.first_name }} {{ admin.last_name }}</td>
+                                        <td>{{ admin.email }}</td>
+                                        <td>{{ admin.date_joined|date:"d/m/Y" }}</td>
+                                        <td>
+                                            <a href="{% url 'admin_edit' admin.id %}" class="btn btn-sm btn-primary">Editar</a>
+                                            {% if admin.id != request.user.id %}
+                                                <a href="{% url 'admin_delete' admin.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted mb-0">No hay administradores registrados.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
