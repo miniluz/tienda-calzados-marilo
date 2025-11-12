@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
+from django.forms import inlineformset_factory
+from catalog.models import Zapato, Marca, Categoria, TallaZapato
 
 
 class CustomerEditForm(forms.Form):
@@ -151,3 +153,81 @@ class AdminEditForm(forms.Form):
         if existing_username:
             raise forms.ValidationError("Ya existe una cuenta con este correo electrónico.")
         return email
+
+
+# ==================== CATALOG MANAGEMENT FORMS ====================
+
+
+class ZapatoForm(forms.ModelForm):
+    class Meta:
+        model = Zapato
+        fields = [
+            "nombre",
+            "descripcion",
+            "marca",
+            "precio",
+            "precioOferta",
+            "categoria",
+            "genero",
+            "material",
+            "color",
+            "imagen",
+            "estaDisponible",
+            "estaDestacado",
+        ]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre del producto"}),
+            "descripcion": forms.Textarea(
+                attrs={"class": "form-control", "rows": 3, "placeholder": "Descripción del producto"}
+            ),
+            "marca": forms.Select(attrs={"class": "form-select"}),
+            "precio": forms.NumberInput(attrs={"class": "form-control", "placeholder": "15.99", "step": "0.01"}),
+            "precioOferta": forms.NumberInput(attrs={"class": "form-control", "placeholder": "11.99", "step": "0.01"}),
+            "categoria": forms.Select(attrs={"class": "form-select"}),
+            "genero": forms.Select(attrs={"class": "form-select"}),
+            "material": forms.TextInput(attrs={"class": "form-control", "placeholder": "Tela, Cuero, etc."}),
+            "color": forms.TextInput(attrs={"class": "form-control", "placeholder": "Negro, Marrón y blanco, etc."}),
+            "imagen": forms.FileInput(attrs={"class": "form-control"}),
+            "estaDisponible": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "estaDestacado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class TallaZapatoForm(forms.ModelForm):
+    class Meta:
+        model = TallaZapato
+        fields = ["talla", "stock"]
+        widgets = {
+            "talla": forms.NumberInput(attrs={"class": "form-control"}),
+            "stock": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
+        }
+
+
+# Formset for managing all sizes for a shoe
+TallaZapatoFormSet = inlineformset_factory(
+    Zapato,
+    TallaZapato,
+    form=TallaZapatoForm,
+    extra=0,  # Don't show extra blank forms
+    can_delete=True,  # Allow deletion
+)
+
+
+class MarcaForm(forms.ModelForm):
+    class Meta:
+        model = Marca
+        fields = ["nombre", "imagen"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre de la marca"}),
+            "imagen": forms.FileInput(attrs={"class": "form-control"}),
+        }
+
+
+class CategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Categoria
+        fields = ["nombre", "imagen"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre de la categoría"}),
+            "imagen": forms.FileInput(attrs={"class": "form-control"}),
+        }
