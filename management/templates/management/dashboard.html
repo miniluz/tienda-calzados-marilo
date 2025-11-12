@@ -11,7 +11,64 @@
 </div>
 
 <div class="row mt-4">
-    <div class="col-md-6 mb-4">
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-box-seam"></i> Gestión de Stock
+                </h5>
+                <p class="card-text text-muted">
+                    Administra el catálogo de zapatos, stock por tallas y disponibilidad de productos.
+                </p>
+                <div class="mt-auto">
+                    <p class="mb-2"><strong>Total de zapatos:</strong> {{ zapato_count }}</p>
+                    <a href="{% url 'zapato_admin_list' %}" class="btn btn-primary w-100">
+                        Ir a Gestión de Stock
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-tag-fill"></i> Gestión de Marcas
+                </h5>
+                <p class="card-text text-muted">
+                    Administra las marcas de zapatos disponibles en el sistema.
+                </p>
+                <div class="mt-auto">
+                    <p class="mb-2"><strong>Total de marcas:</strong> {{ marca_count }}</p>
+                    <a href="{% url 'marca_list' %}" class="btn btn-primary w-100">
+                        Ir a Gestión de Marcas
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-grid-fill"></i> Gestión de Categorías
+                </h5>
+                <p class="card-text text-muted">
+                    Administra las categorías de productos para organizar el catálogo.
+                </p>
+                <div class="mt-auto">
+                    <p class="mb-2"><strong>Total de categorías:</strong> {{ categoria_count }}</p>
+                    <a href="{% url 'categoria_list' %}" class="btn btn-primary w-100">
+                        Ir a Gestión de Categorías
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-4">
         <div class="card shadow h-100">
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">
@@ -30,7 +87,7 @@
         </div>
     </div>
 
-    <div class="col-md-6 mb-4">
+    <div class="col-md-6 col-lg-4 mb-4">
         <div class="card shadow h-100">
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">
