@@ -1,4 +1,5 @@
 import os
+import sys
 from django.apps import AppConfig
 
 
@@ -19,11 +20,11 @@ class ManagementConfig(AppConfig):
         admin_email = "admin@calzmarilo.es"
         admin_password = env_config.ADMIN_PASSWORD
 
-        print("Initializing admin account...")
+        print("Initializing admin account...", file=sys.stderr)
 
         try:
             admin_user = User.objects.get(username=admin_email)
-            print("Admin account exists, updating...")
+            print("Admin account exists, updating...", file=sys.stderr)
             admin_user.set_password(admin_password)
             admin_user.email = admin_email
             admin_user.first_name = "Admin"
@@ -31,9 +32,9 @@ class ManagementConfig(AppConfig):
             admin_user.is_staff = True
             admin_user.is_superuser = True
             admin_user.save()
-            print("Admin account updated")
+            print("Admin account updated", file=sys.stderr)
         except User.DoesNotExist:
-            print("Admin account does not exist, creating...")
+            print("Admin account does not exist, creating...", file=sys.stderr)
             User.objects.create_superuser(
                 username=admin_email,
                 email=admin_email,
@@ -41,4 +42,4 @@ class ManagementConfig(AppConfig):
                 first_name="Admin",
                 last_name="Sistema",
             )
-            print("Admin account created")
+            print("Admin account created", file=sys.stderr)
