@@ -12,6 +12,7 @@ git checkout main
 uv sync --no-dev --frozen
 cp .env.production.example .env
 vi .env
+python manage.py migrate
 # on test version:
 python manage.py seed
 ```
@@ -40,6 +41,7 @@ To update:
 ```sh
 cd tienda-calzados-marilo
 git pull
+python manage.py migrate
 # on test version:
 python manage.py seed
 ```
