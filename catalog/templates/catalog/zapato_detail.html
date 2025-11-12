@@ -1,236 +1,292 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Calzados Mariló</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background-color: #eaeaea;
-      color: #333;
+{% extends 'base.html' %}
+
+{% block title %}{{ zapato.nombre }} - Calzados Marilo{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-detail-container {
+        display: flex;
+        gap: 40px;
+        margin-top: 20px;
     }
 
-    /* Barra superior */
-    .top-bar {
-      background-color: #2d2d2d;
-      color: white;
-      font-size: 12px;
-      padding: 4px 10px;
-    }
-
-    /* Encabezado */
-    header {
-      background-color: #d9d9d9;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 20px;
-    }
-
-    .logo {
-      font-weight: bold;
-      font-size: 22px;
-      color: #1a1a4d;
-      line-height: 1.2;
-    }
-
-    .search-box input[type="text"] {
-      padding: 5px;
-      border: 1px solid #aaa;
-      border-radius: 3px;
-    }
-
-    .search-box button {
-      padding: 5px 10px;
-      background-color: #1a1a4d;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-
-    .user-info {
-      font-size: 14px;
-    }
-
-    /* Contenido principal */
-    main {
-      background-color: white;
-      width: 80%;
-      margin: 30px auto;
-      display: flex;
-      gap: 30px;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    .product-image {
+        flex: 0 0 400px;
     }
 
     .product-image img {
-      width: 100%;
-      max-width: 250px;
-      border-radius: 8px;
+        width: 100%;
+        max-width: 400px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .product-info h3 {
-      margin-top: 0;
-      font-size: 20px;
-      color: #222;
+    .product-info {
+        flex: 1;
+    }
+
+    .product-info h1 {
+        font-size: 28px;
+        color: #222;
+        margin-bottom: 15px;
+    }
+
+    .product-info .description {
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 20px;
+        line-height: 1.6;
+    }
+
+    .product-specs {
+        margin: 20px 0;
+    }
+
+    .product-specs p {
+        margin: 8px 0;
+        font-size: 15px;
+    }
+
+    .product-specs strong {
+        color: #333;
+        min-width: 100px;
+        display: inline-block;
+    }
+
+    .sizes {
+        margin: 20px 0;
+    }
+
+    .sizes h5 {
+        margin-bottom: 12px;
+        font-size: 16px;
+        font-weight: bold;
     }
 
     .sizes button {
-      margin: 3px;
-      padding: 5px 10px;
-      border: 1px solid #888;
-      border-radius: 4px;
-      background-color: #f5f5f5;
-      cursor: pointer;
+        margin: 5px;
+        padding: 10px 15px;
+        border: 2px solid #888;
+        border-radius: 5px;
+        background-color: #f5f5f5;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.2s ease;
+    }
+
+    .sizes button:hover {
+        background-color: #e0e0e0;
+        border-color: #555;
     }
 
     .sizes button.active {
-      background-color: #1a4cff;
-      color: white;
+        background-color: #1a4cff;
+        color: white;
+        border-color: #1a4cff;
     }
 
-    .stock {
-      color: blue;
-      font-weight: bold;
+    .sizes button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .stock-status {
+        margin: 15px 0;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .stock-status.in-stock {
+        color: #28a745;
+    }
+
+    .stock-status.out-of-stock {
+        color: #dc3545;
+    }
+
+    .price-section {
+        margin: 20px 0;
     }
 
     .price {
-      font-size: 20px;
-      color: #333;
-      margin: 10px 0;
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .old-price {
+        text-decoration: line-through;
+        color: #999;
+        font-size: 24px;
+        margin-right: 10px;
+    }
+
+    .discounted-price {
+        color: #e74c3c;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    .discount-badge {
+        display: inline-block;
+        background-color: #e74c3c;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+
+    .actions {
+        margin-top: 25px;
     }
 
     .actions button {
-      margin-right: 10px;
-      padding: 8px 14px;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
-      cursor: pointer;
+        margin-right: 15px;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
     }
 
     .add-cart {
-      background-color: #333;
-      color: white;
+        background-color: #333;
+        color: white;
+    }
+
+    .add-cart:hover:not(:disabled) {
+        background-color: #000;
     }
 
     .buy-now {
-      background-color: #1a4cff;
-      color: white;
+        background-color: #1a4cff;
+        color: white;
     }
 
-    /* Pie de página */
-    footer {
-      background-color: #2d2d2d;
-      color: white;
-      text-align: center;
-      font-size: 12px;
-      padding: 10px;
-      margin-top: 20px;
+    .buy-now:hover:not(:disabled) {
+        background-color: #0039e6;
     }
 
-    footer span {
-      margin: 0 10px;
+    .actions button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
-  </style>
-</head>
-<body>
 
+    /* Responsive */
+    @media (max-width: 768px) {
+        .product-detail-container {
+            flex-direction: column;
+        }
 
-  <header>
-    <div class="logo">
-      <a href="{% url 'catalog:zapato_list' %}" style="text-decoration: none; color: #1a1a4d;">
-        C a l z a d o s <br> M a r i l ó
-      </a>
-    </div>
+        .product-image {
+            flex: 0 0 auto;
+        }
 
-    <form method="get" action="{% url 'catalog:zapato_list' %}" class="search-box">
-      <input type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}">
-      <button type="submit">Buscar</button>
-    </form>
+        .actions button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+        }
+    }
+</style>
+{% endblock %}
 
-    <div class="user-info">
-      Bienvenido Usuario 1 🧍‍♂️ 🛒
-    </div>
-  </header>
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'catalog:zapato_list' %}">Catálogo</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ zapato.nombre }}</li>
+    </ol>
+</nav>
 
-  <main>
+<div class="product-detail-container">
     <div class="product-image">
-      {% with zapato.imagenes.all|first as main_image %}
-        {% if main_image %}
-          <img src="{{ main_image.imagen }}" alt="{{ zapato.nombre }}">
-        {% else %}
-          <img src="https://via.placeholder.com/250x250.png?text=Sin+imagen" alt="Sin imagen">
-        {% endif %}
-      {% endwith %}
+        {% with zapato.imagenes.all|first as main_image %}
+            {% if main_image %}
+                <img src="{{ main_image.imagen }}" alt="{{ zapato.nombre }}">
+            {% else %}
+                <img src="https://via.placeholder.com/400x400.png?text=Sin+imagen" alt="Sin imagen">
+            {% endif %}
+        {% endwith %}
     </div>
 
     <div class="product-info">
-      <h3>{{ zapato.nombre }}</h3>
-      <p>{{ zapato.descripcion }}</p>
-      <p><b>Marca:</b> {{ zapato.marca.nombre }}</p>
-      <p><b>Color:</b> {{ zapato.color|default:"No especificado" }}</p>
-      <p><b>Material:</b> {{ zapato.material|default:"No especificado" }}</p>
-      <p><b>Categoría:</b> {{ zapato.categoria.nombre|default:"Sin categoría" }}</p>
-      <p><b>Género:</b> {{ zapato.genero }}</p>
+        <h1>{{ zapato.nombre }}</h1>
 
-      <p><b>Seleccionar talla:</b></p>
-      <div class="sizes">
-        {% for talla_obj in zapato.tallas.all %}
-          <button data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}">{{ talla_obj.talla }}</button>
-        {% empty %}
-          <p>No hay tallas disponibles.</p>
-        {% endfor %}
-      </div>
+        <p class="description">{{ zapato.descripcion }}</p>
 
-      <p class="stock">
-        {% if zapato.estaDisponible %}
-          <span style="color: green;">✓ En stock</span>
-        {% else %}
-          <span style="color: red;">✗ Agotado</span>
-        {% endif %}
-      </p>
-      
-      {% if zapato.precioOferta %}
-        <div class="price">
-          <span style="text-decoration: line-through; color: #999;">{{ zapato.precio|floatformat:2 }} €</span>
-          <span style="color: #e74c3c; font-weight: bold;">{{ zapato.precioOferta|floatformat:2 }} €</span>
+        <div class="product-specs">
+            <p><strong>Marca:</strong> {{ zapato.marca.nombre }}</p>
+            <p><strong>Color:</strong> {{ zapato.color|default:"No especificado" }}</p>
+            <p><strong>Material:</strong> {{ zapato.material|default:"No especificado" }}</p>
+            <p><strong>Categoría:</strong> {{ zapato.categoria.nombre|default:"Sin categoría" }}</p>
+            <p><strong>Género:</strong> {{ zapato.genero }}</p>
         </div>
-      {% else %}
-        <div class="price">{{ zapato.precio|floatformat:2 }} €</div>
-      {% endif %}
 
-      <div class="actions">
-        <button class="add-cart" {% if not zapato.estaDisponible %}disabled{% endif %}>Añadir a la cesta</button>
-        <button class="buy-now" {% if not zapato.estaDisponible %}disabled{% endif %}>Comprar ya</button>
-      </div>
+        <div class="sizes">
+            <h5>Seleccionar talla:</h5>
+            {% for talla_obj in zapato.tallas.all %}
+                <button data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}" {% if talla_obj.stock == 0 %}disabled{% endif %}>
+                    Talla {{ talla_obj.talla }} {% if talla_obj.stock > 0 %}({{ talla_obj.stock }} disponibles){% else %}(Agotada){% endif %}
+                </button>
+            {% empty %}
+                <p class="text-muted">No hay tallas disponibles para este producto.</p>
+            {% endfor %}
+        </div>
+
+        <div class="stock-status {% if zapato.estaDisponible %}in-stock{% else %}out-of-stock{% endif %}">
+            {% if zapato.estaDisponible %}
+                ✓ En stock
+            {% else %}
+                ✗ Agotado
+            {% endif %}
+        </div>
+
+        <div class="price-section">
+            {% if zapato.precioOferta %}
+                <span class="old-price">{{ zapato.precio|floatformat:2 }} €</span>
+                <span class="discounted-price">{{ zapato.precioOferta|floatformat:2 }} €</span>
+                {% with discount_percent=zapato.precio|add:"-"|add:zapato.precioOferta|floatformat:0 %}
+                    {% widthratio zapato.precio zapato.precioOferta 100 as discount_calc %}
+                    {% with discount=100|add:"-"|add:discount_calc %}
+                        <span class="discount-badge">-{{ discount }}% OFF</span>
+                    {% endwith %}
+                {% endwith %}
+            {% else %}
+                <span class="price">{{ zapato.precio|floatformat:2 }} €</span>
+            {% endif %}
+        </div>
+
+        <div class="actions">
+            <button class="add-cart" {% if not zapato.estaDisponible %}disabled{% endif %}>
+                Añadir a la cesta
+            </button>
+            <button class="buy-now" {% if not zapato.estaDisponible %}disabled{% endif %}>
+                Comprar ya
+            </button>
+        </div>
     </div>
-  </main>
+</div>
+{% endblock %}
 
-  <footer>
-    <span>Avenida del ejemplo nº 0</span> |
-    <span>(+00) 999-999-999</span> |
-    <span>CalzadosMarilo@example.com</span>
-  </footer>
-
-  <script>
+{% block extra_js %}
+<script>
     document.addEventListener('DOMContentLoaded', function() {
-      const sizeButtons = document.querySelectorAll('.sizes button');
-      
-      sizeButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-          e.preventDefault();
-          // Remover la clase active de todos los botones
-          sizeButtons.forEach(btn => btn.classList.remove('active'));
-          // Añadir la clase active al botón clickeado
-          this.classList.add('active');
-        });
-      });
-    });
-  </script>
+        const sizeButtons = document.querySelectorAll('.sizes button:not(:disabled)');
 
-</body>
-</html>
+        sizeButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                // Remove active class from all buttons
+                sizeButtons.forEach(btn => btn.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+            });
+        });
+    });
+</script>
+{% endblock %}
