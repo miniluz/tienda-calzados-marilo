@@ -19,8 +19,11 @@ class ManagementConfig(AppConfig):
         admin_email = "admin@calzmarilo.es"
         admin_password = env_config.ADMIN_PASSWORD
 
+        print("Initializing admin account...")
+
         try:
             admin_user = User.objects.get(username=admin_email)
+            print("Admin account exists, updating...")
             admin_user.set_password(admin_password)
             admin_user.email = admin_email
             admin_user.first_name = "Admin"
@@ -28,7 +31,9 @@ class ManagementConfig(AppConfig):
             admin_user.is_staff = True
             admin_user.is_superuser = True
             admin_user.save()
+            print("Admin account updated")
         except User.DoesNotExist:
+            print("Admin account does not exist, creating...")
             User.objects.create_superuser(
                 username=admin_email,
                 email=admin_email,
@@ -36,3 +41,4 @@ class ManagementConfig(AppConfig):
                 first_name="Admin",
                 last_name="Sistema",
             )
+            print("Admin account created")
