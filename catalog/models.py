@@ -20,6 +20,7 @@ class Zapato(models.Model):
     )
     color = models.CharField("Color", max_length=50, blank=True)
     material = models.CharField("Material", max_length=100, blank=True)
+    imagen = models.ImageField("Imagen del Zapato", upload_to="zapatos/", blank=True, null=True)
     estaDisponible = models.BooleanField("Disponible", default=True)
     estaDestacado = models.BooleanField("Destacado", default=False)
     fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
@@ -52,6 +53,9 @@ class Marca(models.Model):
     fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
     fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
 
+    def __str__(self):
+        return self.nombre
+
 
 class TallaZapato(models.Model):
     talla = models.IntegerField("Talla")
@@ -61,16 +65,11 @@ class TallaZapato(models.Model):
     zapato = models.ForeignKey(Zapato, on_delete=models.CASCADE, related_name="tallas")
 
 
-class ImagenZapato(models.Model):
-    zapato = models.ForeignKey(Zapato, on_delete=models.CASCADE, related_name="imagenes")
-    imagen = models.ImageField("Imagen del Zapato", upload_to="zapatos/", blank=True, null=True)
-    esPrincipal = models.BooleanField("Imagen Principal", default=False)
-    fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
-    fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
-
-
 class Categoria(models.Model):
     nombre = models.CharField("Nombre de la Categoría", max_length=100)
     imagen = models.ImageField("Imagen de la Categoría", upload_to="categorias/", blank=True, null=True)
     fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
     fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
+
+    def __str__(self):
+        return self.nombre
