@@ -9,6 +9,35 @@
             <h2>Gestión de Clientes</h2>
         </div>
 
+        <!-- Filter Section -->
+        <div class="card shadow mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Filtrar Clientes</h5>
+                <form method="get" action="{% url 'customer_list' %}" class="row g-3">
+                    <div class="col-md-4">
+                        {{ filter_form.nombre.label_tag }}
+                        {{ filter_form.nombre }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ filter_form.email.label_tag }}
+                        {{ filter_form.email }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ filter_form.telefono.label_tag }}
+                        {{ filter_form.telefono }}
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Buscar
+                        </button>
+                        <a href="{% url 'customer_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Limpiar filtros
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="card shadow">
             <div class="card-body">
                 {% if customers %}
