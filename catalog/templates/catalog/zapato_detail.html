@@ -253,12 +253,8 @@
             {% endfor %}
         </div>
 
-        <div class="stock-status {% if zapato.estaDisponible %}in-stock{% else %}out-of-stock{% endif %}">
-            {% if zapato.estaDisponible %}
-                ✓ En stock
-            {% else %}
-                ✗ Agotado
-            {% endif %}
+        <div class="stock-status" id="stock-status-display">
+            <span class="stock-text">Calculando...</span>
         </div>
 
         <div class="price-section">
@@ -271,7 +267,7 @@
             {% endif %}
         </div>
 
-        <div class="size-selection-notice" style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; display: flex; align-items: center; gap: 8px;">
+        <div class="size-selection-notice" style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; display: none; align-items: center; gap: 8px;">
             <span style="font-size: 1.2rem;">⚠️</span>
             <span style="color: #856404; font-weight: 500;">Selecciona una talla para continuar con la compra</span>
         </div>
@@ -292,9 +288,32 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const sizeButtons = document.querySelectorAll('.sizes button:not(:disabled)');
+        const allSizeButtons = document.querySelectorAll('.sizes button');
         const addCartBtn = document.querySelector('.add-cart');
         const buyNowBtn = document.querySelector('.buy-now');
         const sizeNotice = document.querySelector('.size-selection-notice');
+        const stockStatusDisplay = document.getElementById('stock-status-display');
+
+        // Calculate total stock
+        let totalStock = 0;
+        allSizeButtons.forEach(button => {
+            const stock = parseInt(button.dataset.stock) || 0;
+            totalStock += stock;
+        });
+
+        // Update stock status display
+        if (totalStock > 0) {
+            stockStatusDisplay.className = 'stock-status in-stock';
+            stockStatusDisplay.innerHTML = '✓ En stock';
+        } else {
+            stockStatusDisplay.className = 'stock-status out-of-stock';
+            stockStatusDisplay.innerHTML = '✗ Sin stock';
+        }
+
+        // Only show the notice if there are available sizes
+        if (sizeButtons.length > 0) {
+            sizeNotice.style.display = 'flex';
+        }
 
         sizeButtons.forEach(button => {
             button.addEventListener('click', function(e) {
