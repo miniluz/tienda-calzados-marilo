@@ -23,6 +23,48 @@
         footer {
             flex-shrink: 0;
         }
+
+        /* Category Header Styles */
+        .category-header {
+            background-color: #212529;
+            padding: 12px 0;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 0;
+            flex-wrap: nowrap;
+            justify-content: center;
+            width: 100%;
+            margin: 0;
+        }
+
+        .category-header .category-btn {
+            padding: 10px 15px;
+            font-size: 14px;
+            border: none;
+            border-right: 1px solid #444;
+            background-color: #212529;
+            color: white;
+            text-decoration: none;
+            border-radius: 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            text-align: center;
+        }
+
+        .category-header .category-btn:last-child {
+            border-right: none;
+        }
+
+        .category-header .category-btn:hover {
+            background-color: #0f0f38;
+            color: white;
+        }
+
+        .category-header .category-btn.active {
+            background-color: white;
+            color: black;
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -90,6 +132,30 @@
             </div>
         </div>
     </nav>
+
+    <!-- Category Header Buttons -->
+    {% if request.resolver_match.url_name == 'zapato_list' %}
+    <div class="category-header">
+        <a href="{% url 'catalog:zapato_list' %}" class="category-btn {% if not request.GET.genero %}active{% endif %}">
+            Página Principal
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Hombre" class="category-btn {% if request.GET.genero == 'Hombre' %}active{% endif %}">
+            Hombre
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Mujer" class="category-btn {% if request.GET.genero == 'Mujer' %}active{% endif %}">
+            Mujer
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Niño" class="category-btn {% if request.GET.genero == 'Niño' %}active{% endif %}">
+            Niño
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Niña" class="category-btn {% if request.GET.genero == 'Niña' %}active{% endif %}">
+            Niña
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Unisex" class="category-btn {% if request.GET.genero == 'Unisex' %}active{% endif %}">
+            Unisex
+        </a>
+    </div>
+    {% endif %}
 
     <!-- Messages -->
     {% if messages %}
