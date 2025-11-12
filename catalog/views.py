@@ -60,7 +60,8 @@ class ZapatoListView(ListView):
             except (ValueError, TypeError):
                 pass
 
-        return qs
+        # Prioritize featured products, then sort by newest
+        return qs.order_by("-estaDestacado", "-fechaCreacion")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
