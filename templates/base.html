@@ -136,23 +136,20 @@
     <!-- Category Header Buttons -->
     {% if request.resolver_match.url_name == 'zapato_list' %}
     <div class="category-header">
-        <a href="{% url 'catalog:zapato_list' %}" class="category-btn {% if not request.GET.genero %}active{% endif %}">
-            Página Principal
-        </a>
         <a href="{% url 'catalog:zapato_list' %}?genero=Hombre" class="category-btn {% if request.GET.genero == 'Hombre' %}active{% endif %}">
             Hombre
         </a>
         <a href="{% url 'catalog:zapato_list' %}?genero=Mujer" class="category-btn {% if request.GET.genero == 'Mujer' %}active{% endif %}">
             Mujer
         </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Unisex" class="category-btn {% if request.GET.genero == 'Unisex' %}active{% endif %}">
+            Unisex
+        </a>
         <a href="{% url 'catalog:zapato_list' %}?genero=Niño" class="category-btn {% if request.GET.genero == 'Niño' %}active{% endif %}">
             Niño
         </a>
         <a href="{% url 'catalog:zapato_list' %}?genero=Niña" class="category-btn {% if request.GET.genero == 'Niña' %}active{% endif %}">
             Niña
-        </a>
-        <a href="{% url 'catalog:zapato_list' %}?genero=Unisex" class="category-btn {% if request.GET.genero == 'Unisex' %}active{% endif %}">
-            Unisex
         </a>
     </div>
     {% endif %}
