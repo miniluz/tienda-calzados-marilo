@@ -9,6 +9,19 @@ from .views import (
     AdminCreateView,
     AdminEditView,
     AdminDeleteView,
+    ZapatoAdminListView,
+    ZapatoAdminDetailView,
+    ZapatoAdminCreateView,
+    ZapatoStockEditView,
+    ZapatoAdminDeleteView,
+    MarcaListView,
+    MarcaCreateView,
+    MarcaEditView,
+    MarcaDeleteView,
+    CategoriaListView,
+    CategoriaCreateView,
+    CategoriaEditView,
+    CategoriaDeleteView,
 )
 
 urlpatterns = [
@@ -21,4 +34,20 @@ urlpatterns = [
     path("admins/create/", AdminCreateView.as_view(), name="admin_create"),
     path("admins/<int:user_id>/edit/", AdminEditView.as_view(), name="admin_edit"),
     path("admins/<int:user_id>/delete/", AdminDeleteView.as_view(), name="admin_delete"),
+    # Zapato (Shoe) management
+    path("zapatos/", ZapatoAdminListView.as_view(), name="zapato_admin_list"),
+    path("zapatos/create/", ZapatoAdminCreateView.as_view(), name="zapato_admin_create"),
+    path("zapatos/<int:zapato_id>/", ZapatoAdminDetailView.as_view(), name="zapato_admin_detail"),
+    path("zapatos/<int:zapato_id>/stock/", ZapatoStockEditView.as_view(), name="zapato_stock_edit"),
+    path("zapatos/<int:zapato_id>/delete/", ZapatoAdminDeleteView.as_view(), name="zapato_admin_delete"),
+    # Marca (Brand) management
+    path("marcas/", MarcaListView.as_view(), name="marca_list"),
+    path("marcas/create/", MarcaCreateView.as_view(), name="marca_create"),
+    path("marcas/<int:marca_id>/edit/", MarcaEditView.as_view(), name="marca_edit"),
+    path("marcas/<int:marca_id>/delete/", MarcaDeleteView.as_view(), name="marca_delete"),
+    # Categoria (Category) management
+    path("categorias/", CategoriaListView.as_view(), name="categoria_list"),
+    path("categorias/create/", CategoriaCreateView.as_view(), name="categoria_create"),
+    path("categorias/<int:categoria_id>/edit/", CategoriaEditView.as_view(), name="categoria_edit"),
+    path("categorias/<int:categoria_id>/delete/", CategoriaDeleteView.as_view(), name="categoria_delete"),
 ]
