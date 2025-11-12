@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ zapato.nombre }} - Calzados Marilo{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-detail-container {
+        display: flex;
+        gap: 40px;
+        margin-top: 20px;
+    }
+
+    .product-image {
+        flex: 0 0 400px;
+    }
+
+    .product-image img {
+        width: 100%;
+        max-width: 400px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .product-info {
+        flex: 1;
+    }
+
+    .product-info h1 {
+        font-size: 28px;
+        color: #222;
+        margin-bottom: 15px;
+    }
+
+    .product-info .description {
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 20px;
+        line-height: 1.6;
+    }
+
+    .product-specs {
+        margin: 20px 0;
+    }
+
+    .product-specs p {
+        margin: 8px 0;
+        font-size: 15px;
+    }
+
+    .product-specs strong {
+        color: #333;
+        min-width: 100px;
+        display: inline-block;
+    }
+
+    .sizes {
+        margin: 20px 0;
+    }
+
+    .sizes h5 {
+        margin-bottom: 12px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .sizes input[type="radio"] {
+        display: none;
+    }
+
+    .sizes label {
+        display: inline-block;
+        margin: 5px;
+        padding: 10px 15px;
+        border: 2px solid #888;
+        border-radius: 5px;
+        background-color: #f5f5f5;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.2s ease;
+    }
+
+    .sizes label:hover:not(.disabled) {
+        background-color: #e0e0e0;
+        border-color: #555;
+    }
+
+    .sizes input[type="radio"]:checked + label {
+        background-color: #1a4cff;
+        color: white;
+        border-color: #1a4cff;
+    }
+
+    .sizes label.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .stock-status {
+        margin: 15px 0;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .stock-status.in-stock {
+        color: #28a745;
+    }
+
+    .stock-status.out-of-stock {
+        color: #dc3545;
+    }
+
+    .stock-status.unavailable {
+        color: #6c757d;
+    }
+
+    .price-section {
+        margin: 20px 0;
+    }
+
+    .price {
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .old-price {
+        text-decoration: line-through;
+        color: #999;
+        font-size: 24px;
+        margin-right: 10px;
+    }
+
+    .discounted-price {
+        color: #e74c3c;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    .discount-badge {
+        display: inline-block;
+        background-color: #e74c3c;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+
+    .actions {
+        margin-top: 25px;
+    }
+
+    .actions button {
+        margin-right: 15px;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .add-cart {
+        background-color: #333;
+        color: white;
+    }
+
+    .add-cart:hover:not(:disabled) {
+        background-color: #000;
+    }
+
+    .buy-now {
+        background-color: #1a4cff;
+        color: white;
+    }
+
+    .buy-now:hover:not(:disabled) {
+        background-color: #0039e6;
+    }
+
+    .actions button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .product-detail-container {
+            flex-direction: column;
+        }
+
+        .product-image {
+            flex: 0 0 auto;
+        }
+
+        .actions button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+        }
+    }
+
+    .featured-badge-detail {
+        display: inline-block;
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #1a1a1a;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'catalog:zapato_list' %}">Catálogo</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ zapato.nombre }}</li>
+    </ol>
+</nav>
+
+<div class="product-detail-container">
+    <div class="product-image">
+        {% if zapato.imagen %}
+            <img src="{{ zapato.imagen.url }}" alt="{{ zapato.nombre }}">
+        {% else %}
+            <img src="https://via.placeholder.com/400x400.png?text=Sin+imagen" alt="Sin imagen">
+        {% endif %}
+    </div>
+
+    <div class="product-info">
+        {% if zapato.estaDestacado %}
+            <div class="featured-badge-detail">Producto destacado</div>
+        {% endif %}
+        <h1>{{ zapato.nombre }}</h1>
+
+        <p class="description">{{ zapato.descripcion }}</p>
+
+        <div class="product-specs">
+            <p><strong>Marca:</strong> {{ zapato.marca.nombre }}</p>
+            <p><strong>Color:</strong> {{ zapato.color|default:"No especificado" }}</p>
+            <p><strong>Material:</strong> {{ zapato.material|default:"No especificado" }}</p>
+            <p><strong>Categoría:</strong> {{ zapato.categoria.nombre|default:"Sin categoría" }}</p>
+            <p><strong>Género:</strong> {{ zapato.genero }}</p>
+        </div>
+
+        <div class="sizes">
+            <h5>Seleccionar talla:</h5>
+            {% for talla_obj in tallas_ordenadas %}
+                <input type="radio" name="size" id="size-{{ talla_obj.talla }}" value="{{ talla_obj.talla }}" {% if not zapato.estaDisponible or talla_obj.stock == 0 %}disabled{% endif %}>
+                <label for="size-{{ talla_obj.talla }}" {% if not zapato.estaDisponible or talla_obj.stock == 0 %}class="disabled"{% endif %}>
+                    Talla {{ talla_obj.talla }}
+                </label>
+            {% empty %}
+                <p class="text-muted">No hay tallas disponibles para este producto.</p>
+            {% endfor %}
+        </div>
+
+        <div class="stock-status" id="stock-status-display">
+            <span class="stock-text">Calculando...</span>
+        </div>
+
+        <div class="price-section">
+            {% if zapato.precioOferta %}
+                <span class="old-price">{{ zapato.precio|floatformat:2 }} €</span>
+                <span class="discounted-price">{{ zapato.precioOferta|floatformat:2 }} €</span>
+                <span class="discount-badge">-{{ zapato.descuento_porcentaje }}% OFF</span>
+            {% else %}
+                <span class="price">{{ zapato.precio|floatformat:2 }} €</span>
+            {% endif %}
+        </div>
+
+        <div class="size-selection-notice" style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; display: none; align-items: center; gap: 8px;">
+            <i class="bi bi-exclamation-triangle mx-2" style="color: #856404; font-weight: 500;"></i>
+            <span style="color: #856404; font-weight: 500;">Selecciona una talla para continuar con la compra</span>
+        </div>
+
+        <div class="actions">
+            <button class="add-cart" disabled data-requires-size="true">
+                Añadir a la cesta
+            </button>
+            <button class="buy-now" disabled data-requires-size="true">
+                Comprar ya
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sizeRadios = document.querySelectorAll('.sizes input[type="radio"]:not(:disabled)');
+        const addCartBtn = document.querySelector('.add-cart');
+        const buyNowBtn = document.querySelector('.buy-now');
+        const sizeNotice = document.querySelector('.size-selection-notice');
+        const stockStatusDisplay = document.getElementById('stock-status-display');
+        const isProductAvailable = {{ zapato.estaDisponible|yesno:"true,false" }};
+
+        // Check product availability first (takes precedence)
+        if (!isProductAvailable) {
+            stockStatusDisplay.className = 'stock-status unavailable';
+            stockStatusDisplay.innerHTML = '✗ No disponible';
+            // Don't show size selection notice for unavailable products
+        } else if (sizeRadios.length > 0) {
+            // Product is available and has stock
+            stockStatusDisplay.className = 'stock-status in-stock';
+            stockStatusDisplay.innerHTML = '✓ En stock';
+            // Show the size selection notice
+            sizeNotice.style.display = 'flex';
+        } else {
+            // Product is available but out of stock
+            stockStatusDisplay.className = 'stock-status out-of-stock';
+            stockStatusDisplay.innerHTML = '✗ Sin stock';
+        }
+
+        sizeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Enable purchase buttons
+                addCartBtn.disabled = false;
+                buyNowBtn.disabled = false;
+
+                // Hide size selection notice
+                sizeNotice.style.display = 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

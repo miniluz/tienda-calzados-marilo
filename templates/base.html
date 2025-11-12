@@ -7,6 +7,75 @@
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- Custom CSS - Primary Color Override -->
+    {% load static %}
+    <link href="{% static '/css/custom.css' %}" rel="stylesheet">
+
+    <style>
+        /* Sticky footer styles */
+        html, body {
+            height: 100%;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1 0 auto;
+        }
+        footer {
+            flex-shrink: 0;
+        }
+
+        /* Category Header Styles */
+        .category-header {
+            background-color: #151522;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 0;
+            flex-wrap: nowrap;
+            justify-content: center;
+            width: 100%;
+            margin: 0;
+        }
+
+        .category-header .category-btn {
+            background-color: #151522;
+            padding: 10px 15px;
+            font-size: 14px;
+            border: none;
+            border-right: 1px solid #444;
+            color: white;
+            text-decoration: none;
+            border-radius: 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            text-align: center;
+        }
+
+        .category-header .category-btn:last-child {
+            border-right: none;
+        }
+
+        .category-header .category-btn:hover {
+            background-color: #0f0f38;
+            color: white;
+        }
+
+        .category-header .category-btn.active {
+            background-color: white;
+            color: black;
+        }
+
+        .logo {
+            height: 50px;
+            width: auto;
+            filter: saturate(150%) brightness(110%);
+        }
+    </style>
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -14,21 +83,68 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'home' %}">Calzados Marilo</a>
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <img class="logo" src="{% static '/images/calzados-marilo-logo.png' %}" alt="Calzados Marilo">
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                {# If the view provides a `form`, render the filters dropdown next to the search bar so both appear together. #}
+                {% if form %}
+                <div class="d-flex mx-auto align-items-center gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" id="navbarFiltersBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                            Filtros
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end p-3 shadow" aria-labelledby="navbarFiltersBtn" style="min-width: 320px;">
+                            <form method="get" action="{% url 'catalog:zapato_list' %}" id="navbar-filters-form">
+                                <input type="hidden" name="q" value="{{ request.GET.q }}">
+                                <div class="mb-2">
+                                    <label for="id_categoria_nav" class="form-label mb-1">Categoría</label>
+                                    {{ form.categoria }}
+                                </div>
+                                <div class="mb-2">
+                                    <label for="id_marca_nav" class="form-label mb-1">Marca</label>
+                                    {{ form.marca }}
+                                </div>
+                                <div class="mb-2">
+                                    <label for="id_genero_nav" class="form-label mb-1">Género</label>
+                                    {{ form.genero }}
+                                </div>
+                                <div class="d-flex gap-2 mt-3">
+                                    <button type="submit" class="btn btn-primary">Aplicar</button>
+                                    <button type="button" class="btn btn-light" id="navbar-filters-reset">Limpiar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Search Form beside filters -->
+                    <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex">
+                        <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 250px;">
+                        <button class="btn btn-outline-light" type="submit">Buscar</button>
+                    </form>
+                </div>
+                {% else %}
+                <!-- Search Form (no filters available) -->
+                <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex mx-auto">
+                    <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 250px;">
+                    <button class="btn btn-outline-light" type="submit">Buscar</button>
+                </form>
+                {% endif %}
+
+                <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                         {% if user.is_staff %}
-                            <li class="nav-item">
+                            <li class="nav-item me-2">
                                 <a class="nav-link" href="{% url 'admin_dashboard' %}">Panel de Administración</a>
                             </li>
                         {% endif %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Hola, {{ user.first_name|default:user.username }}
+                                <i class="bi bi-person-circle me-1"></i>
+                                {{ user.first_name|default:user.username }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 {% if not user.is_staff %}
@@ -46,17 +162,42 @@
                             </ul>
                         </li>
                     {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'login' %}">Iniciar sesión</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'register' %}">Registrarse</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownGuest" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle me-1"></i>
+                                Mi Cuenta
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownGuest">
+                                <li><a class="dropdown-item" href="{% url 'login' %}">Iniciar sesión</a></li>
+                                <li><a class="dropdown-item" href="{% url 'register' %}">Registrarse</a></li>
+                            </ul>
                         </li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
+
+    <!-- Category Header Buttons -->
+    {% if request.resolver_match.url_name == 'zapato_list' %}
+    <div class="category-header">
+        <a href="{% url 'catalog:zapato_list' %}?genero=Hombre" class="category-btn {% if request.GET.genero == 'Hombre' %}active{% endif %}">
+            Hombre
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Mujer" class="category-btn {% if request.GET.genero == 'Mujer' %}active{% endif %}">
+            Mujer
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Unisex" class="category-btn {% if request.GET.genero == 'Unisex' %}active{% endif %}">
+            Unisex
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Niño" class="category-btn {% if request.GET.genero == 'Niño' %}active{% endif %}">
+            Niño
+        </a>
+        <a href="{% url 'catalog:zapato_list' %}?genero=Niña" class="category-btn {% if request.GET.genero == 'Niña' %}active{% endif %}">
+            Niña
+        </a>
+    </div>
+    {% endif %}
 
     <!-- Messages -->
     {% if messages %}
@@ -76,14 +217,42 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-3 mt-5">
+    <footer class="bg-dark text-white text-center py-4 mt-5">
         <div class="container">
-            <p class="mb-0">&copy; 2025 Calzados Marilo. Todos los derechos reservados.</p>
+            <p class="mb-2">
+                <span class="me-3">Avenida del Ejemplo nº 1</span> |
+                <span class="mx-3">(+34) 999-999-999</span> |
+                <span class="ms-3">info@calzmarilo.es</span>
+            </p>
+            <p class="mb-0 small">&copy; 2025 Calzados Marilo. Todos los derechos reservados.</p>
         </div>
     </footer>
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Reset handler for navbar filters (if present)
+        document.addEventListener('DOMContentLoaded', function() {
+            const resetBtn = document.getElementById('navbar-filters-reset');
+            const navbarForm = document.getElementById('navbar-filters-form');
+            if (resetBtn && navbarForm) {
+                resetBtn.addEventListener('click', function() {
+                    Array.from(navbarForm.elements).forEach(function(el) {
+                        if (!el.name) return;
+                        if (el.type === 'hidden') return; // keep q
+                        if (el.tagName === 'SELECT') {
+                            el.selectedIndex = 0;
+                        } else if (el.type === 'checkbox' || el.type === 'radio') {
+                            el.checked = false;
+                        } else {
+                            el.value = '';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

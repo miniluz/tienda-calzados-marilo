@@ -12,12 +12,14 @@ git checkout main
 uv sync --no-dev --frozen
 cp .env.production.example .env
 vi .env
+python manage.py migrate
 # on test version:
 python manage.py seed
 ```
 
 On the web service settings,
 set the source code and working directory to `/home/username/tienda-calzados-marilo`,
+configure `/static/` to statically serve `/home/username/tienda-calzados-marilo/static`,
 and set the venv to `/home/username/tienda-calzados-marilo/.venv`.
 
 Modify WSGI to contain:
@@ -40,6 +42,7 @@ To update:
 ```sh
 cd tienda-calzados-marilo
 git pull
+python manage.py migrate
 # on test version:
 python manage.py seed
 ```
