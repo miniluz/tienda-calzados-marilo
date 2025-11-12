@@ -252,10 +252,10 @@
     <ul class="pagination justify-content-center">
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}{% if request.GET.min_precio %}&min_precio={{ request.GET.min_precio }}{% endif %}{% if request.GET.max_precio %}&max_precio={{ request.GET.max_precio }}{% endif %}">Primera</a>
+            <a class="page-link" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}">Primera</a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}{% if request.GET.min_precio %}&min_precio={{ request.GET.min_precio }}{% endif %}{% if request.GET.max_precio %}&max_precio={{ request.GET.max_precio }}{% endif %}">Anterior</a>
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}">Anterior</a>
         </li>
         {% endif %}
 
@@ -265,10 +265,10 @@
 
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}{% if request.GET.min_precio %}&min_precio={{ request.GET.min_precio }}{% endif %}{% if request.GET.max_precio %}&max_precio={{ request.GET.max_precio }}{% endif %}">Siguiente</a>
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}">Siguiente</a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}{% if request.GET.min_precio %}&min_precio={{ request.GET.min_precio }}{% endif %}{% if request.GET.max_precio %}&max_precio={{ request.GET.max_precio }}{% endif %}">Última</a>
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.marca %}&marca={{ request.GET.marca }}{% endif %}{% if request.GET.genero %}&genero={{ request.GET.genero }}{% endif %}{% if request.GET.talla %}&talla={{ request.GET.talla }}{% endif %}">Última</a>
         </li>
         {% endif %}
     </ul>

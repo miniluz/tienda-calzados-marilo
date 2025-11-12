@@ -1,8 +1,9 @@
-from django.views.generic import ListView, DetailView
-from django.http import JsonResponse
 from django.db.models import Q
-from .models import Zapato
+from django.http import JsonResponse
+from django.views.generic import DetailView, ListView
+
 from .forms import ZapatoSearchForm
+from .models import Zapato
 
 
 class ZapatoListView(ListView):
@@ -18,8 +19,6 @@ class ZapatoListView(ListView):
         marca = self.request.GET.get("marca")
         genero = self.request.GET.get("genero")
         talla = self.request.GET.get("talla")
-        min_precio = self.request.GET.get("min_precio")
-        max_precio = self.request.GET.get("max_precio")
 
         if q:
             qs = qs.filter(Q(nombre__icontains=q) | Q(marca__nombre__icontains=q) | Q(descripcion__icontains=q))
@@ -43,18 +42,6 @@ class ZapatoListView(ListView):
             try:
                 talla_int = int(talla)
                 qs = qs.filter(tallas__talla=talla_int)
-            except (ValueError, TypeError):
-                pass
-
-        if min_precio:
-            try:
-                qs = qs.filter(precio__gte=int(min_precio))
-            except (ValueError, TypeError):
-                pass
-
-        if max_precio:
-            try:
-                qs = qs.filter(precio__lte=int(max_precio))
             except (ValueError, TypeError):
                 pass
 

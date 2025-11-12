@@ -1,4 +1,5 @@
 from django import forms
+
 from .models import Categoria, Marca
 
 
@@ -31,6 +32,4 @@ class ZapatoSearchForm(forms.Form):
         label="Género",
         widget=forms.Select(attrs={"class": "form-select"}),
     )
-    min_precio = forms.IntegerField(required=False)
-    max_precio = forms.IntegerField(required=False)
     talla = forms.IntegerField(required=False)
