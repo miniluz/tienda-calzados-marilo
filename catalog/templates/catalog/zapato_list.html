@@ -14,6 +14,7 @@
     }
 
     .product-card {
+        position: relative;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -169,6 +170,25 @@
         color: white;
         border-color: #1a1a4d;
     }
+
+    .featured-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #1a1a1a;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
 </style>
 {% endblock %}
 
@@ -226,6 +246,9 @@
     {% for zapato in zapatos %}
     {% with total_stock=zapato.tallas.all|length %}
     <div class="product-card {% if total_stock == 0 %}out-of-stock{% endif %}" data-product-id="{{ zapato.id }}" data-tallas='[{% for talla in zapato.tallas.all %}{"talla": {{ talla.talla }}, "stock": {{ talla.stock }}}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+        {% if zapato.estaDestacado %}
+            <div class="featured-badge">Destacado</div>
+        {% endif %}
         <a href="{{ zapato.get_absolute_url }}">
             {% if zapato.imagen %}
                 <img src="{{ zapato.imagen.url }}" alt="{{ zapato.nombre }}">
