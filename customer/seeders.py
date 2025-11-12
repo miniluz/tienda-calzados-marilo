@@ -5,14 +5,24 @@ This module is automatically discovered and executed by: python manage.py seed
 """
 
 import random
+import unicodedata
 
 from django.contrib.auth.models import User
 
 from customer.models import Customer
 
 
+def remove_accents(text):
+    """Remove accents from a string for use in email addresses"""
+    nfd = unicodedata.normalize("NFD", text)
+    return "".join(char for char in nfd if unicodedata.category(char) != "Mn")
+
+
 def seed():
     """Main seeding function for the customer app"""
+
+    # Set random seed for reproducibility
+    random.seed(42)
 
     # Clear existing customer data (keeps superuser/staff)
     print("  Clearing existing customer data...")
@@ -143,8 +153,8 @@ def seed():
         last_name2 = random.choice(last_names)
         last_name = f"{last_name1} {last_name2}"
 
-        # Generate email
-        email = f"{first_name.lower()}.{last_name1.lower()}{i + 1}@example.com"
+        # Generate email (remove accents from name)
+        email = f"{remove_accents(first_name).lower()}.{remove_accents(last_name1).lower()}{i + 1}@example.com"
 
         # Create user
         user = User.objects.create_user(

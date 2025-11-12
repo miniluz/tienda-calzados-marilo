@@ -16,6 +16,9 @@ from catalog.models import Categoria, Marca, TallaZapato, Zapato
 def seed():
     """Main seeding function for the catalog app"""
 
+    # Set random seed for reproducibility
+    random.seed(42)
+
     # Clear existing data
     print("  Clearing existing catalog data...")
     TallaZapato.objects.all().delete()
