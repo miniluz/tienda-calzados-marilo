@@ -127,6 +127,48 @@
     .filter-section h5 {
         margin-bottom: 15px;
     }
+
+    .size-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 10px 0;
+        justify-content: center;
+    }
+
+    .size-box {
+        width: 32px;
+        height: 32px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 500;
+        background-color: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #333;
+    }
+
+    .size-box:hover:not(.disabled) {
+        border-color: #1a1a4d;
+        background-color: #f0f0f0;
+    }
+
+    .size-box.disabled {
+        background-color: #e9ecef;
+        color: #adb5bd;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .size-box.selected {
+        background-color: #1a1a4d;
+        color: white;
+        border-color: #1a1a4d;
+    }
 </style>
 {% endblock %}
 
@@ -201,6 +243,7 @@
                     <span>{{ zapato.precio }} €</span>
                 {% endif %}
             </p>
+            <div class="size-selector" data-product-id="{{ zapato.id }}"></div>
             <p class="status">
                 <span class="stock-display" data-product-id="{{ zapato.id }}">Calculando...</span>
             </p>
@@ -264,6 +307,7 @@
 
             const stockDisplay = document.querySelector(`.stock-display[data-product-id="${card.getAttribute('data-product-id')}"]`);
             const addButton = card.querySelector('.add-button');
+            const sizeSelector = card.querySelector(`.size-selector[data-product-id="${card.getAttribute('data-product-id')}"]`);
 
             if (stockDisplay) {
                 if (totalStock > 0) {
@@ -276,6 +320,37 @@
                         addButton.disabled = true;
                     }
                 }
+            }
+
+            // Render size selector
+            if (sizeSelector && tallas.length > 0) {
+                // Sort sizes numerically
+                const sortedTallas = tallas.sort((a, b) => a.talla - b.talla);
+
+                sortedTallas.forEach(talla => {
+                    const sizeBox = document.createElement('div');
+                    sizeBox.className = 'size-box';
+                    sizeBox.textContent = talla.talla;
+                    sizeBox.dataset.talla = talla.talla;
+                    sizeBox.dataset.stock = talla.stock;
+
+                    if (talla.stock === 0) {
+                        sizeBox.classList.add('disabled');
+                    } else {
+                        sizeBox.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Remove selected class from siblings
+                            sizeSelector.querySelectorAll('.size-box').forEach(box => {
+                                box.classList.remove('selected');
+                            });
+                            // Add selected class to clicked box
+                            this.classList.add('selected');
+                        });
+                    }
+
+                    sizeSelector.appendChild(sizeBox);
+                });
             }
         });
     });
