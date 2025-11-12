@@ -63,7 +63,12 @@
         font-weight: bold;
     }
 
-    .sizes button {
+    .sizes input[type="radio"] {
+        display: none;
+    }
+
+    .sizes label {
+        display: inline-block;
         margin: 5px;
         padding: 10px 15px;
         border: 2px solid #888;
@@ -74,18 +79,18 @@
         transition: all 0.2s ease;
     }
 
-    .sizes button:hover {
+    .sizes label:hover:not(.disabled) {
         background-color: #e0e0e0;
         border-color: #555;
     }
 
-    .sizes button.active {
+    .sizes input[type="radio"]:checked + label {
         background-color: #1a4cff;
         color: white;
         border-color: #1a4cff;
     }
 
-    .sizes button:disabled {
+    .sizes label.disabled {
         opacity: 0.5;
         cursor: not-allowed;
     }
@@ -245,9 +250,10 @@
         <div class="sizes">
             <h5>Seleccionar talla:</h5>
             {% for talla_obj in zapato.tallas.all %}
-                <button data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}" {% if talla_obj.stock == 0 %}disabled{% endif %}>
+                <input type="radio" name="size" id="size-{{ talla_obj.talla }}" value="{{ talla_obj.talla }}" data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}" {% if talla_obj.stock == 0 %}disabled{% endif %}>
+                <label for="size-{{ talla_obj.talla }}" {% if talla_obj.stock == 0 %}class="disabled"{% endif %}>
                     Talla {{ talla_obj.talla }}
-                </button>
+                </label>
             {% empty %}
                 <p class="text-muted">No hay tallas disponibles para este producto.</p>
             {% endfor %}
@@ -287,8 +293,8 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const sizeButtons = document.querySelectorAll('.sizes button:not(:disabled)');
-        const allSizeButtons = document.querySelectorAll('.sizes button');
+        const sizeRadios = document.querySelectorAll('.sizes input[type="radio"]:not(:disabled)');
+        const allSizeRadios = document.querySelectorAll('.sizes input[type="radio"]');
         const addCartBtn = document.querySelector('.add-cart');
         const buyNowBtn = document.querySelector('.buy-now');
         const sizeNotice = document.querySelector('.size-selection-notice');
@@ -296,8 +302,8 @@
 
         // Calculate total stock
         let totalStock = 0;
-        allSizeButtons.forEach(button => {
-            const stock = parseInt(button.dataset.stock) || 0;
+        allSizeRadios.forEach(radio => {
+            const stock = parseInt(radio.dataset.stock) || 0;
             totalStock += stock;
         });
 
@@ -311,18 +317,12 @@
         }
 
         // Only show the notice if there are available sizes
-        if (sizeButtons.length > 0) {
+        if (sizeRadios.length > 0) {
             sizeNotice.style.display = 'flex';
         }
 
-        sizeButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                // Remove active class from all buttons
-                sizeButtons.forEach(btn => btn.classList.remove('active'));
-                // Add active class to clicked button
-                this.classList.add('active');
-
+        sizeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
                 // Enable purchase buttons
                 addCartBtn.disabled = false;
                 buyNowBtn.disabled = false;

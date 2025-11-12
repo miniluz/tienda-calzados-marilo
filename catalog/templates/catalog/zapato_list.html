@@ -137,7 +137,11 @@
         justify-content: center;
     }
 
-    .size-box {
+    .size-selector input[type="radio"] {
+        display: none;
+    }
+
+    .size-selector label {
         width: 32px;
         height: 32px;
         border: 1px solid #ddd;
@@ -153,19 +157,19 @@
         color: #333;
     }
 
-    .size-box:hover:not(.disabled) {
+    .size-selector label:hover:not(.disabled) {
         border-color: #1a1a4d;
         background-color: #f0f0f0;
     }
 
-    .size-box.disabled {
+    .size-selector label.disabled {
         background-color: #e9ecef;
         color: #adb5bd;
         cursor: not-allowed;
         opacity: 0.6;
     }
 
-    .size-box.selected {
+    .size-selector input[type="radio"]:checked + label {
         background-color: #1a1a4d;
         color: white;
         border-color: #1a1a4d;
@@ -350,30 +354,30 @@
             if (sizeSelector && tallas.length > 0) {
                 // Sort sizes numerically
                 const sortedTallas = tallas.sort((a, b) => a.talla - b.talla);
+                const productId = card.getAttribute('data-product-id');
 
                 sortedTallas.forEach(talla => {
-                    const sizeBox = document.createElement('div');
-                    sizeBox.className = 'size-box';
-                    sizeBox.textContent = talla.talla;
-                    sizeBox.dataset.talla = talla.talla;
-                    sizeBox.dataset.stock = talla.stock;
+                    const radioId = `size-${productId}-${talla.talla}`;
+
+                    const radioInput = document.createElement('input');
+                    radioInput.type = 'radio';
+                    radioInput.name = `size-${productId}`;
+                    radioInput.id = radioId;
+                    radioInput.value = talla.talla;
+                    radioInput.dataset.talla = talla.talla;
+                    radioInput.dataset.stock = talla.stock;
+
+                    const label = document.createElement('label');
+                    label.htmlFor = radioId;
+                    label.textContent = talla.talla;
 
                     if (talla.stock === 0) {
-                        sizeBox.classList.add('disabled');
-                    } else {
-                        sizeBox.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Remove selected class from siblings
-                            sizeSelector.querySelectorAll('.size-box').forEach(box => {
-                                box.classList.remove('selected');
-                            });
-                            // Add selected class to clicked box
-                            this.classList.add('selected');
-                        });
+                        radioInput.disabled = true;
+                        label.classList.add('disabled');
                     }
 
-                    sizeSelector.appendChild(sizeBox);
+                    sizeSelector.appendChild(radioInput);
+                    sizeSelector.appendChild(label);
                 });
             }
         });
