@@ -37,7 +37,16 @@ def seed():
 
     # Seed brands
     print("  Creating brands...")
-    brand_names = ["Nike", "Adidas", "Puma", "Reebok", "New Balance", "Converse", "Vans", "Fila"]
+    brand_names = [
+        "Nike",
+        "Adidas",
+        "Puma",
+        "Reebok",
+        "New Balance",
+        "Converse",
+        "Vans",
+        "Fila",
+    ]
     marcas = []
     for name in brand_names:
         if image_file and os.path.exists(image_path):
@@ -50,7 +59,14 @@ def seed():
 
     # Seed categories
     print("  Creating categories...")
-    category_names = ["Deportivos", "Casuales", "Formales", "Botas", "Sandalias", "Zapatillas Running"]
+    category_names = [
+        "Deportivos",
+        "Casuales",
+        "Formales",
+        "Botas",
+        "Sandalias",
+        "Zapatillas Running",
+    ]
     categorias = []
     for name in category_names:
         if image_file and os.path.exists(image_path):
@@ -76,15 +92,26 @@ def seed():
         ("Stan Smith", "Zapatilla de tenis icónica minimalista"),
     ]
 
-    colors = ["Negro", "Blanco", "Azul", "Rojo", "Verde", "Gris", "Marrón", "Rosa", "Amarillo", "Naranja"]
+    colors = [
+        "Negro",
+        "Blanco",
+        "Azul",
+        "Rojo",
+        "Verde",
+        "Gris",
+        "Marrón",
+        "Rosa",
+        "Amarillo",
+        "Naranja",
+    ]
     materials = ["Cuero", "Sintético", "Lona", "Gamuza", "Malla", "Textil"]
     genders = ["Hombre", "Mujer", "Niño", "Niña", "Unisex"]
 
     zapatos = []
     for i in range(NUM_SHOES):
         template = shoe_templates[i % len(shoe_templates)]
-        nombre = f"{template[0]} {i+1}"
-        descripcion = f"{template[1]} - Modelo {i+1}"
+        nombre = f"{template[0]} {i + 1}"
+        descripcion = f"{template[1]} - Modelo {i + 1}"
 
         precio = random.randint(40, 200)
         precio_oferta = random.choice([None, random.randint(30, precio - 10)]) if precio > 50 else None
@@ -106,7 +133,7 @@ def seed():
                     estaDestacado=random.choice([True, False]),
                     marca=random.choice(marcas),
                     categoria=random.choice(categorias),
-                    imagen=File(f, name=f"shoe_{i+1}.jpeg"),
+                    imagen=File(f, name=f"shoe_{i + 1}.jpeg"),
                 )
         else:
             zapato = Zapato.objects.create(
@@ -132,7 +159,9 @@ def seed():
 
     for zapato in zapatos:
         # Each shoe gets 5-8 random sizes
-        num_sizes = random.randint(5, 8)
+        # and a 20% chance to have no stock
+        no_stock = random.random() < 0.2
+        num_sizes = 0 if no_stock else random.randint(5, 8)
         selected_sizes = random.sample(available_sizes, k=num_sizes)
 
         for talla in selected_sizes:
