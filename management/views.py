@@ -5,11 +5,12 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.views import View
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Q
 from customer.models import Customer
 from catalog.models import Zapato, Marca, Categoria, TallaZapato
 from .forms import (
     CustomerEditForm,
+    CustomerFilterForm,
     AdminCreateForm,
     AdminEditForm,
     ZapatoForm,
@@ -55,8 +56,33 @@ class CustomerListView(View):
     template_name = "management/customer_list.html"
 
     def get(self, request):
-        customers = Customer.objects.select_related("user").all().order_by("-created_at")
-        return render(request, self.template_name, {"customers": customers})
+        customers = Customer.objects.select_related("user").all()
+
+        # Initialize filter form with GET data
+        filter_form = CustomerFilterForm(request.GET)
+
+        if filter_form.is_valid():
+            # Filter by nombre (searches in first_name and last_name)
+            nombre = filter_form.cleaned_data.get("nombre")
+            if nombre:
+                customers = customers.filter(
+                    Q(user__first_name__icontains=nombre) | Q(user__last_name__icontains=nombre)
+                )
+
+            # Filter by email
+            email = filter_form.cleaned_data.get("email")
+            if email:
+                customers = customers.filter(user__email__icontains=email)
+
+            # Filter by telefono (exact match)
+            telefono = filter_form.cleaned_data.get("telefono")
+            if telefono:
+                customers = customers.filter(phone_number__icontains=telefono)
+
+        # Always order by creation date (newest first)
+        customers = customers.order_by("-created_at")
+
+        return render(request, self.template_name, {"customers": customers, "filter_form": filter_form})
 
 
 @method_decorator(staff_required, name="dispatch")

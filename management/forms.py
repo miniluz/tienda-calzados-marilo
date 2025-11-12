@@ -239,3 +239,36 @@ class CategoriaForm(forms.ModelForm):
             "nombre": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre de la categoría"}),
             "imagen": forms.FileInput(attrs={"class": "form-control"}),
         }
+
+
+class CustomerFilterForm(forms.Form):
+    nombre = forms.CharField(
+        required=False,
+        label="Nombre o apellidos",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Buscar por nombre o apellidos...",
+            }
+        ),
+    )
+    email = forms.CharField(
+        required=False,
+        label="Correo electrónico",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Buscar por email...",
+            }
+        ),
+    )
+    telefono = forms.CharField(
+        required=False,
+        label="Teléfono",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Buscar por teléfono...",
+            }
+        ),
+    )
