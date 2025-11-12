@@ -36,14 +36,8 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'catalog:zapato_list' %}">Catálogo</a>
-                    </li>
-                </ul>
-
                 <!-- Search Form -->
-                <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex me-3">
+                <form method="get" action="{% url 'catalog:zapato_list' %}" class="d-flex mx-auto">
                     <input class="form-control me-2" type="text" name="q" placeholder="Buscar zapatos..." value="{{ request.GET.q }}" style="width: 250px;">
                     <button class="btn btn-outline-light" type="submit">Buscar</button>
                 </form>
