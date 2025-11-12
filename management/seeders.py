@@ -5,12 +5,22 @@ This module is automatically discovered and executed by: python manage.py seed
 """
 
 import random
+import unicodedata
 
 from django.contrib.auth.models import User
 
 
+def remove_accents(text):
+    """Remove accents from a string for use in email addresses"""
+    nfd = unicodedata.normalize("NFD", text)
+    return "".join(char for char in nfd if unicodedata.category(char) != "Mn")
+
+
 def seed():
     """Main seeding function for the management app"""
+
+    # Set random seed for reproducibility
+    random.seed(42)
 
     # Clear existing admin data (keeps superuser)
     print("  Clearing existing admin data...")
@@ -84,9 +94,9 @@ def seed():
         last_name2 = random.choice(last_names)
         last_name = f"{last_name1} {last_name2}"
 
-        # Generate email with role variety
+        # Generate email with role variety (remove accents from name)
         role = roles[i % len(roles)]
-        email = f"{role}.{first_name.lower()}{i + 1}@calzmarilo.es"
+        email = f"{role}.{remove_accents(first_name).lower()}{i + 1}@calzmarilo.es"
 
         # Create admin user
         user = User.objects.create_user(
