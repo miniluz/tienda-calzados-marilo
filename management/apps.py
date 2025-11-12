@@ -1,4 +1,3 @@
-import os
 import sys
 from django.apps import AppConfig
 
@@ -8,8 +7,7 @@ class ManagementConfig(AppConfig):
     name = "management"
 
     def ready(self):
-        if os.environ.get("RUN_MAIN") == "true":
-            self._initialize_default_admin()
+        self._initialize_default_admin()
 
     def _initialize_default_admin(self):
         from django.contrib.auth.models import User
