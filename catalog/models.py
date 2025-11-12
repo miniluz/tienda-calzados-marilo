@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.urls import reverse
 
@@ -5,8 +6,8 @@ from django.urls import reverse
 class Zapato(models.Model):
     nombre = models.CharField("Nombre", max_length=200)
     descripcion = models.TextField("Descripción", blank=True)
-    precio = models.IntegerField("Precio")
-    precioOferta = models.IntegerField("Precio de Oferta", blank=True, null=True)
+    precio = models.IntegerField("Precio", validators=[MinValueValidator(1)])
+    precioOferta = models.IntegerField("Precio de Oferta", blank=True, null=True, validators=[MinValueValidator(1)])
     genero = models.CharField(
         "Género",
         max_length=50,

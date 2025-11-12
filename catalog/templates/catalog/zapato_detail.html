@@ -191,6 +191,20 @@
             margin: 10px 0;
         }
     }
+
+    .featured-badge-detail {
+        display: inline-block;
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #1a1a1a;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+        margin-bottom: 15px;
+    }
 </style>
 {% endblock %}
 
@@ -213,6 +227,9 @@
     </div>
 
     <div class="product-info">
+        {% if zapato.estaDestacado %}
+            <div class="featured-badge-detail">Producto destacado</div>
+        {% endif %}
         <h1>{{ zapato.nombre }}</h1>
 
         <p class="description">{{ zapato.descripcion }}</p>
@@ -229,7 +246,7 @@
             <h5>Seleccionar talla:</h5>
             {% for talla_obj in zapato.tallas.all %}
                 <button data-talla="{{ talla_obj.talla }}" data-stock="{{ talla_obj.stock }}" {% if talla_obj.stock == 0 %}disabled{% endif %}>
-                    Talla {{ talla_obj.talla }} {% if talla_obj.stock > 0 %}({{ talla_obj.stock }} disponibles){% else %}(Agotada){% endif %}
+                    Talla {{ talla_obj.talla }}
                 </button>
             {% empty %}
                 <p class="text-muted">No hay tallas disponibles para este producto.</p>
@@ -254,11 +271,16 @@
             {% endif %}
         </div>
 
+        <div class="size-selection-notice" style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">⚠️</span>
+            <span style="color: #856404; font-weight: 500;">Selecciona una talla para continuar con la compra</span>
+        </div>
+
         <div class="actions">
-            <button class="add-cart" {% if not zapato.estaDisponible %}disabled{% endif %}>
+            <button class="add-cart" disabled data-requires-size="true">
                 Añadir a la cesta
             </button>
-            <button class="buy-now" {% if not zapato.estaDisponible %}disabled{% endif %}>
+            <button class="buy-now" disabled data-requires-size="true">
                 Comprar ya
             </button>
         </div>
@@ -270,6 +292,9 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const sizeButtons = document.querySelectorAll('.sizes button:not(:disabled)');
+        const addCartBtn = document.querySelector('.add-cart');
+        const buyNowBtn = document.querySelector('.buy-now');
+        const sizeNotice = document.querySelector('.size-selection-notice');
 
         sizeButtons.forEach(button => {
             button.addEventListener('click', function(e) {
@@ -278,6 +303,13 @@
                 sizeButtons.forEach(btn => btn.classList.remove('active'));
                 // Add active class to clicked button
                 this.classList.add('active');
+
+                // Enable purchase buttons
+                addCartBtn.disabled = false;
+                buyNowBtn.disabled = false;
+
+                // Hide size selection notice
+                sizeNotice.style.display = 'none';
             });
         });
     });

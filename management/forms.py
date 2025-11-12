@@ -181,8 +181,12 @@ class ZapatoForm(forms.ModelForm):
                 attrs={"class": "form-control", "rows": 3, "placeholder": "Descripción del producto"}
             ),
             "marca": forms.Select(attrs={"class": "form-select"}),
-            "precio": forms.NumberInput(attrs={"class": "form-control", "placeholder": "15.99", "step": "0.01"}),
-            "precioOferta": forms.NumberInput(attrs={"class": "form-control", "placeholder": "11.99", "step": "0.01"}),
+            "precio": forms.NumberInput(
+                attrs={"class": "form-control", "placeholder": "15.99", "step": "0.01", "min": "1"}
+            ),
+            "precioOferta": forms.NumberInput(
+                attrs={"class": "form-control", "placeholder": "11.99", "step": "0.01", "min": "1"}
+            ),
             "categoria": forms.Select(attrs={"class": "form-select"}),
             "genero": forms.Select(attrs={"class": "form-select"}),
             "material": forms.TextInput(attrs={"class": "form-control", "placeholder": "Tela, Cuero, etc."}),
