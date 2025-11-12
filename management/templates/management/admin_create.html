@@ -12,6 +12,8 @@
                 <form method="post" novalidate>
                     {% csrf_token %}
 
+                    {% include 'management/includes/form_errors.html' with form=form %}
+
                     <div class="mb-3">
                         <label for="id_email" class="form-label">Correo electrónico:</label>
                         {{ form.email }}
