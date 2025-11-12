@@ -1,137 +1,127 @@
-from django.db import transaction
+"""
+Catalog seeder - creates sample data for shoes, brands, categories, sizes, and images
 
-from .models import Marca, Categoria, Zapato, TallaZapato, ImagenZapato
+This module is automatically discovered and executed by: python manage.py seed
+"""
+
+import os
+import random
+
+from django.conf import settings
+from django.core.files import File
+
+from catalog.models import Categoria, ImagenZapato, Marca, TallaZapato, Zapato
 
 
-def run():
-    """
-    Crea datos de ejemplo para Marca, Categoria, Zapato, TallaZapato e ImagenZapato.
-    Ejecutar desde el shell de Django o importar y llamar catalog.seeders.run()
-    """
-    with transaction.atomic():
-        # Marcas
-        marcas = [
-            {"nombre": "Nike", "imagen": "https://example.com/marcas/nike.png"},
-            {"nombre": "Adidas", "imagen": "https://example.com/marcas/adidas.png"},
-            {"nombre": "Puma", "imagen": "https://example.com/marcas/puma.png"},
-            {"nombre": "Reebok", "imagen": "https://example.com/marcas/reebok.png"},
-        ]
-        marca_objs = {}
-        for m in marcas:
-            obj, _ = Marca.objects.get_or_create(nombre=m["nombre"], defaults={"imagen": m["imagen"]})
-            marca_objs[m["nombre"]] = obj
+def seed():
+    """Main seeding function for the catalog app"""
 
-        # Categorías
-        categorias = [
-            {"nombre": "Deportivos", "imagen": "https://example.com/cats/deportivos.png"},
-            {"nombre": "Casuales", "imagen": "https://example.com/cats/casuales.png"},
-            {"nombre": "Formales", "imagen": "https://example.com/cats/formales.png"},
-            {"nombre": "Botas", "imagen": "https://example.com/cats/botas.png"},
-        ]
-        categoria_objs = {}
-        for c in categorias:
-            obj, _ = Categoria.objects.get_or_create(nombre=c["nombre"], defaults={"imagen": c["imagen"]})
-            categoria_objs[c["nombre"]] = obj
+    # Clear existing data
+    print("  Clearing existing catalog data...")
+    ImagenZapato.objects.all().delete()
+    TallaZapato.objects.all().delete()
+    Zapato.objects.all().delete()
+    Marca.objects.all().delete()
+    Categoria.objects.all().delete()
+    print("  Database cleared")
 
-        # Zapatos de ejemplo
-        zapatos = [
-            {
-                "nombre": "Air Runner",
-                "descripcion": "Zapatilla deportiva ligera para uso diario.",
-                "precio": 80,
-                "precioOferta": 65,
-                "genero": "Hombre",
-                "color": "Blanco/Azul",
-                "material": "Sintético",
-                "estaDisponible": True,
-                "estaDestacado": True,
-                "marca": "Nike",
-                "categoria": "Deportivos",
-                "tallas": [39, 40, 41, 42],
-                "imagenes": [
-                    "https://example.com/zapatos/air_runner_1.jpg",
-                    "https://example.com/zapatos/air_runner_2.jpg",
-                ],
-            },
-            {
-                "nombre": "Classic Casual",
-                "descripcion": "Zapato casual cómodo para el día a día.",
-                "precio": 55,
-                "precioOferta": None,
-                "genero": "Mujer",
-                "color": "Negro",
-                "material": "Cuero sintético",
-                "estaDisponible": True,
-                "estaDestacado": False,
-                "marca": "Adidas",
-                "categoria": "Casuales",
-                "tallas": [36, 37, 38, 39],
-                "imagenes": [
-                    "https://example.com/zapatos/classic_casual_1.jpg",
-                ],
-            },
-            {
-                "nombre": "Office Formal",
-                "descripcion": "Zapato formal elegante para ocasiones especiales.",
-                "precio": 120,
-                "precioOferta": 99,
-                "genero": "Hombre",
-                "color": "Marrón",
-                "material": "Cuero",
-                "estaDisponible": True,
-                "estaDestacado": False,
-                "marca": "Reebok",
-                "categoria": "Formales",
-                "tallas": [40, 41, 42, 43],
-                "imagenes": [
-                    "https://example.com/zapatos/office_formal_1.jpg",
-                    "https://example.com/zapatos/office_formal_2.jpg",
-                ],
-            },
-        ]
+    # Configuration
+    NUM_SHOES = 100
 
-        created_zapatos = []
-        for z in zapatos:
-            marca = marca_objs.get(z["marca"])
-            categoria = categoria_objs.get(z["categoria"])
-            zapato_obj, created = Zapato.objects.get_or_create(
-                nombre=z["nombre"],
-                defaults={
-                    "descripcion": z["descripcion"],
-                    "precio": z["precio"],
-                    "precioOferta": z["precioOferta"],
-                    "genero": z["genero"],
-                    "color": z["color"],
-                    "material": z["material"],
-                    "estaDisponible": z["estaDisponible"],
-                    "estaDestacado": z["estaDestacado"],
-                    "marca": marca,
-                    "categoria": categoria,
-                },
-            )
-            if created:
-                created_zapatos.append(zapato_obj)
+    # Seed brands
+    print("  Creating brands...")
+    brand_names = ["Nike", "Adidas", "Puma", "Reebok", "New Balance", "Converse", "Vans", "Fila"]
+    marcas = []
+    for name in brand_names:
+        marca = Marca.objects.create(nombre=name)
+        marcas.append(marca)
+    print(f"  Created {len(marcas)} brands")
 
-            # Tallas y stock
-            for talla in z["tallas"]:
-                TallaZapato.objects.get_or_create(
-                    zapato=zapato_obj,
-                    talla=talla,
-                    defaults={"stock": 10},
+    # Seed categories
+    print("  Creating categories...")
+    category_names = ["Deportivos", "Casuales", "Formales", "Botas", "Sandalias", "Zapatillas Running"]
+    categorias = []
+    for name in category_names:
+        categoria = Categoria.objects.create(nombre=name)
+        categorias.append(categoria)
+    print(f"  Created {len(categorias)} categories")
+
+    # Seed shoes
+    print(f"  Creating {NUM_SHOES} shoes...")
+    shoe_templates = [
+        ("Air Max Runner", "Zapatilla deportiva con tecnología Air Max"),
+        ("Ultraboost 22", "Zapatilla de running con amortiguación Boost"),
+        ("Suede Classic", "Zapatilla casual icónica de gamuza"),
+        ("Classic Leather", "Zapatilla clásica de cuero"),
+        ("574 Core", "Zapatilla retro con comodidad moderna"),
+        ("Chuck Taylor All Star", "Zapatilla clásica de lona alta"),
+        ("Old Skool", "Zapatilla skate clásica con franja lateral"),
+        ("Disruptor II", "Zapatilla chunky con estilo retro"),
+        ("Court Vision Low", "Zapatilla de baloncesto inspirada en los 80s"),
+        ("Stan Smith", "Zapatilla de tenis icónica minimalista"),
+    ]
+
+    colors = ["Negro", "Blanco", "Azul", "Rojo", "Verde", "Gris", "Marrón", "Rosa", "Amarillo", "Naranja"]
+    materials = ["Cuero", "Sintético", "Lona", "Gamuza", "Malla", "Textil"]
+    genders = ["Hombre", "Mujer", "Niño", "Niña", "Unisex"]
+
+    zapatos = []
+    for i in range(NUM_SHOES):
+        template = shoe_templates[i % len(shoe_templates)]
+        nombre = f"{template[0]} {i+1}"
+        descripcion = f"{template[1]} - Modelo {i+1}"
+
+        precio = random.randint(40, 200)
+        precio_oferta = random.choice([None, random.randint(30, precio - 10)]) if precio > 50 else None
+
+        zapato = Zapato.objects.create(
+            nombre=nombre,
+            descripcion=descripcion,
+            precio=precio,
+            precioOferta=precio_oferta,
+            genero=random.choice(genders),
+            color=random.choice(colors),
+            material=random.choice(materials),
+            estaDisponible=True,
+            estaDestacado=random.choice([True, False]),
+            marca=random.choice(marcas),
+            categoria=random.choice(categorias),
+        )
+        zapatos.append(zapato)
+    print(f"  Created {len(zapatos)} shoes")
+
+    # Seed sizes and stock
+    print("  Creating sizes and stock...")
+    talla_count = 0
+    available_sizes = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45]
+
+    for zapato in zapatos:
+        # Each shoe gets 5-8 random sizes
+        num_sizes = random.randint(5, 8)
+        selected_sizes = random.sample(available_sizes, k=num_sizes)
+
+        for talla in selected_sizes:
+            TallaZapato.objects.create(zapato=zapato, talla=talla, stock=random.randint(5, 25))
+            talla_count += 1
+
+    print(f"  Created {talla_count} size entries")
+
+    # Seed images
+    print("  Creating images...")
+    image_path = os.path.join(settings.BASE_DIR, "seed-data", "shoes-image.jpeg")
+    imagen_count = 0
+
+    if os.path.exists(image_path):
+        for zapato in zapatos:
+            with open(image_path, "rb") as f:
+                ImagenZapato.objects.create(
+                    zapato=zapato, imagen=File(f, name=f"shoe_{zapato.id}.jpeg"), esPrincipal=True
                 )
-
-            # Imágenes (la primera es principal)
-            for idx, img in enumerate(z["imagenes"]):
-                ImagenZapato.objects.get_or_create(
-                    zapato=zapato_obj,
-                    imagen=img,
-                    defaults={"esPrincipal": idx == 0},
-                )
-
-        # Resumen
-        print("Seed completado:")
-        print(f"  Marcas: {Marca.objects.count()}")
-        print(f"  Categorías: {Categoria.objects.count()}")
-        print(f"  Zapatos: {Zapato.objects.count()}")
-        print(f"  Tallas: {TallaZapato.objects.count()}")
-        print(f"  Imágenes: {ImagenZapato.objects.count()}")
+                imagen_count += 1
+        print(f"  Created {imagen_count} images")
+    else:
+        print(f"  Warning: Image file not found at {image_path}")
+        for zapato in zapatos:
+            ImagenZapato.objects.create(zapato=zapato, imagen=None, esPrincipal=True)
+            imagen_count += 1
+        print(f"  Created {imagen_count} placeholder images")
