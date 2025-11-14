@@ -24,6 +24,14 @@ services:
     volumes:
       - ./docker-vols/servers.json:/pgadmin/servers.json
 
-networks: 
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - 1025:1025  # SMTP server
+      - 8025:8025  # Web UI
+    networks:
+      - postgres-network
+
+networks:
   postgres-network:
     driver: bridge

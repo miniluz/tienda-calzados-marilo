@@ -20,9 +20,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Starting database seeding..."))
         self.stdout.write("=" * 60)
 
-        seeded_apps = []
-        failed_apps = []
-
+        # Discover all seeders with their priorities
+        seeders = []
         for app_config in apps.get_app_configs():
             # Skip built-in Django apps
             if app_config.name.startswith("django."):
@@ -37,14 +36,38 @@ class Command(BaseCommand):
 
                 # Check if it has a seed() function
                 if hasattr(seeder_module, "seed"):
-                    self.stdout.write(f"\nSeeding {app_name}...")
-                    seeder_module.seed()
-                    seeded_apps.append(app_name)
-                    self.stdout.write(self.style.SUCCESS(f"✓ {app_name} seeded successfully"))
+                    # Get priority (default: 50 if not specified)
+                    priority = getattr(seeder_module, "PRIORITY", 50)
+                    seeders.append(
+                        {
+                            "name": app_name,
+                            "module": seeder_module,
+                            "priority": priority,
+                        }
+                    )
 
             except ModuleNotFoundError:
                 # No seeders.py in this app, skip silently
                 continue
+
+        # Sort seeders by priority (lower = runs first)
+        seeders.sort(key=lambda s: s["priority"])
+
+        # Execute seeders in order
+        seeded_apps = []
+        failed_apps = []
+
+        for seeder_info in seeders:
+            app_name = seeder_info["name"]
+            seeder_module = seeder_info["module"]
+            priority = seeder_info["priority"]
+
+            try:
+                self.stdout.write(f"\nSeeding {app_name} (priority: {priority})...")
+                seeder_module.seed()
+                seeded_apps.append(app_name)
+                self.stdout.write(self.style.SUCCESS(f"✓ {app_name} seeded successfully"))
+
             except Exception as e:
                 failed_apps.append((app_name, str(e)))
                 self.stdout.write(self.style.ERROR(f"✗ Failed to seed {app_name}: {e}"))

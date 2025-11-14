@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Pedido Confirmado - Tienda Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    </div>
+                    
+                    <h1 class="mb-3">¡Pedido Confirmado!</h1>
+                    
+                    <p class="lead mb-4">
+                        Gracias por tu compra. Tu pedido ha sido procesado correctamente.
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <h4 class="alert-heading">Código de Pedido</h4>
+                        <h2 class="mb-0">{{ order.codigo_pedido }}</h2>
+                        <small class="text-muted">Guarda este código para consultar el estado de tu pedido</small>
+                    </div>
+                    
+                    <div class="row text-start mt-4">
+                        <div class="col-md-6">
+                            <h5><i class="bi bi-box"></i> Detalles del Pedido</h5>
+                            <ul class="list-unstyled">
+                                {% for item in order.items.all %}
+                                <li>{{ item.zapato.nombre }} (x{{ item.cantidad }})</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5><i class="bi bi-cash"></i> Resumen del Pago</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Subtotal:</td>
+                                    <td class="text-end">€{{ order.subtotal }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Envío:</td>
+                                    <td class="text-end">€{{ order.coste_entrega }}</td>
+                                </tr>
+                                <tr>
+                                    <td>IVA:</td>
+                                    <td class="text-end">€{{ order.impuestos }}</td>
+                                </tr>
+                                <tr class="fw-bold">
+                                    <td>Total:</td>
+                                    <td class="text-end">€{{ order.total }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-3">
+                        <h5><i class="bi bi-truck"></i> Información de Envío</h5>
+                        <p class="mb-1">{{ order.nombre }} {{ order.apellido }}</p>
+                        <p class="mb-1">{{ order.direccion_envio }}</p>
+                        <p class="mb-1">{{ order.ciudad_envio }}, {{ order.codigo_postal_envio }}</p>
+                        <p class="mb-0">{{ order.email }} | {{ order.telefono }}</p>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-envelope"></i>
+                        Hemos enviado un correo de confirmación a <strong>{{ order.email }}</strong>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'orders:order_list' %}" class="btn btn-primary">
+                            <i class="bi bi-list"></i> Ver Mis Pedidos
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'catalog:zapato_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-shop"></i> Seguir Comprando
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

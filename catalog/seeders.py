@@ -12,6 +12,9 @@ from django.core.files import File
 
 from catalog.models import Categoria, Marca, TallaZapato, Zapato
 
+# Seeder priority (lower = runs first)
+PRIORITY = 10
+
 
 def seed():
     """Main seeding function for the catalog app"""
@@ -21,6 +24,14 @@ def seed():
 
     # Clear existing data
     print("  Clearing existing catalog data...")
+
+    # Delete orders first (OrderItem has PROTECT FK to Zapato)
+    from orders.models import Order, OrderItem
+
+    OrderItem.objects.all().delete()
+    Order.objects.all().delete()
+
+    # Now safe to delete catalog data
     TallaZapato.objects.all().delete()
     Zapato.objects.all().delete()
     Marca.objects.all().delete()

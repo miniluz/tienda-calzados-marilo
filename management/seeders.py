@@ -9,6 +9,9 @@ import unicodedata
 
 from django.contrib.auth.models import User
 
+# Seeder priority (lower = runs first)
+PRIORITY = 20
+
 
 def remove_accents(text):
     """Remove accents from a string for use in email addresses"""

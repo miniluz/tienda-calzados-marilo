@@ -22,6 +22,9 @@ from .views import (
     CategoriaCreateView,
     CategoriaEditView,
     CategoriaDeleteView,
+    OrderManagementListView,
+    OrderManagementDetailView,
+    CleanupExpiredOrdersView,
 )
 
 urlpatterns = [
@@ -50,4 +53,8 @@ urlpatterns = [
     path("categorias/create/", CategoriaCreateView.as_view(), name="categoria_create"),
     path("categorias/<int:categoria_id>/edit/", CategoriaEditView.as_view(), name="categoria_edit"),
     path("categorias/<int:categoria_id>/delete/", CategoriaDeleteView.as_view(), name="categoria_delete"),
+    # Order management
+    path("orders/", OrderManagementListView.as_view(), name="order_management_list"),
+    path("orders/cleanup/", CleanupExpiredOrdersView.as_view(), name="cleanup_expired_orders"),
+    path("orders/<str:codigo>/", OrderManagementDetailView.as_view(), name="order_management_detail"),
 ]

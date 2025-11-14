@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Pedidos - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cart-check-fill"></i> Gestión de Pedidos</h2>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    {{ filter_form.email.label_tag }}
+                    {{ filter_form.email }}
+                </div>
+                <div class="col-md-3">
+                    {{ filter_form.nombre.label_tag }}
+                    {{ filter_form.nombre }}
+                </div>
+                <div class="col-md-3">
+                    {{ filter_form.estado.label_tag }}
+                    {{ filter_form.estado }}
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Pedidos -->
+    {% if orders %}
+    <div class="row">
+        {% for order in orders %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">{{ order.codigo_pedido }}</span>
+                    <span class="badge 
+                        {% if order.estado == 'recibido' %}bg-success
+                        {% elif order.estado == 'en_envio' %}bg-primary
+                        {% else %}bg-warning{% endif %}">
+                        {{ order.get_estado_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong><i class="bi bi-person"></i> Cliente:</strong><br>
+                        {% if order.usuario %}
+                        {{ order.usuario.get_full_name }}
+                        {% else %}
+                        {{ order.nombre }} {{ order.apellido }}
+                        {% endif %}
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="bi bi-calendar"></i> Fecha:</strong><br>
+                        {{ order.fecha_creacion|date:"d/m/Y H:i" }}
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="bi bi-cash"></i> Total:</strong>
+                        <span class="fs-5">€{{ order.total }}</span>
+                    </p>
+                    <p class="mb-2">
+                        <strong><i class="bi bi-credit-card"></i> Pago:</strong>
+                        {{ order.get_metodo_pago_display }}
+                    </p>
+                    <a href="{% url 'order_management_detail' order.codigo_pedido %}" class="btn btn-primary w-100 mt-2">
+                        Ver Detalles <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        No hay pedidos que mostrar.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

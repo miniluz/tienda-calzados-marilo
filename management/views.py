@@ -8,6 +8,7 @@ from django.views import View
 from django.db.models import Sum, F, Q
 from customer.models import Customer
 from catalog.models import Zapato, Marca, Categoria, TallaZapato
+from orders.emails import send_order_status_update_email
 from .forms import (
     CustomerEditForm,
     CustomerFilterForm,
@@ -16,6 +17,7 @@ from .forms import (
     ZapatoForm,
     MarcaForm,
     CategoriaForm,
+    OrderFilterForm,
 )
 
 
@@ -668,3 +670,144 @@ class CategoriaDeleteView(View):
         categoria.delete()
         messages.success(request, f"Categoría {categoria_nombre} eliminada correctamente.")
         return redirect("categoria_list")
+
+
+# Order Management Views
+
+
+@method_decorator(staff_required, name="dispatch")
+class OrderManagementListView(View):
+    """View for managing all orders in the system"""
+
+    template_name = "management/order_list.html"
+
+    def get(self, request):
+        from orders.models import Order
+
+        orders = Order.objects.filter(pagado=True).select_related("usuario").order_by("-fecha_creacion")
+
+        # Initialize filter form with GET data
+        filter_form = OrderFilterForm(request.GET, estado_choices=Order.ESTADO_CHOICES)
+
+        if filter_form.is_valid():
+            # Filter by email
+            email = filter_form.cleaned_data.get("email")
+            if email:
+                orders = orders.filter(Q(usuario__email__icontains=email) | Q(email__icontains=email))
+
+            # Filter by name (searches in first_name, last_name, nombre, and apellido)
+            nombre = filter_form.cleaned_data.get("nombre")
+            if nombre:
+                orders = orders.filter(
+                    Q(usuario__first_name__icontains=nombre)
+                    | Q(usuario__last_name__icontains=nombre)
+                    | Q(nombre__icontains=nombre)
+                    | Q(apellido__icontains=nombre)
+                )
+
+            # Filter by status
+            estado = filter_form.cleaned_data.get("estado")
+            if estado:
+                orders = orders.filter(estado=estado)
+
+        context = {
+            "orders": orders,
+            "filter_form": filter_form,
+            "status_choices": Order.ESTADO_CHOICES,
+        }
+
+        return render(request, self.template_name, context)
+
+
+@method_decorator(staff_required, name="dispatch")
+class OrderManagementDetailView(View):
+    """View for viewing and managing a specific order"""
+
+    template_name = "management/order_detail.html"
+
+    def get(self, request, codigo):
+        from orders.models import Order
+
+        order = get_object_or_404(Order, codigo_pedido=codigo)
+
+        context = {
+            "order": order,
+            "status_choices": Order.ESTADO_CHOICES,
+        }
+
+        return render(request, self.template_name, context)
+
+    def post(self, request, codigo):
+        from orders.models import Order
+
+        order = get_object_or_404(Order, codigo_pedido=codigo)
+
+        # Update order status
+        new_status = request.POST.get("estado")
+        if new_status and new_status in dict(Order.ESTADO_CHOICES):
+            old_status = order.estado
+            order.estado = new_status
+            order.save()
+
+            # Send status update email if status changed
+            if old_status != new_status:
+                send_order_status_update_email(order)
+
+            messages.success(request, f"Estado del pedido actualizado a {order.get_estado_display()}")
+        else:
+            messages.error(request, "Estado inválido")
+
+        return redirect("order_management_detail", codigo=codigo)
+
+
+@method_decorator(staff_required, name="dispatch")
+class CleanupExpiredOrdersView(View):
+    """View for manually triggering cleanup of expired unpaid orders"""
+
+    def post(self, request):
+        from django.utils.safestring import mark_safe
+        from orders.utils import cleanup_expired_orders
+
+        result = cleanup_expired_orders()
+
+        # Build detailed message
+        if result["deleted_count"] == 0:
+            messages.info(request, "No hay pedidos expirados para limpiar.")
+        else:
+            # Build HTML message with proper formatting
+            message_html = f"""
+                <strong>Limpieza completada:</strong> {result['deleted_count']} pedido(s) eliminado(s).
+            """
+
+            # Add stock details if any items were restored
+            if result["stock_details"]:
+                message_html += """
+                    <hr class="my-2">
+                    <strong>Stock restaurado:</strong>
+                    <ul class="mt-2 mb-0" style="list-style-type: disc;">
+                """
+
+                for shoe in result["stock_details"]:
+                    message_html += f"""
+                        <li>
+                            <strong>{shoe['zapato_nombre']}</strong> (ID: {shoe['zapato_id']}):
+                            <ul style="list-style-type: circle; margin-top: 0.25rem;">
+                    """
+
+                    for talla_info in shoe["tallas"]:
+                        message_html += f"""
+                                <li>Talla {talla_info['talla']}: +{talla_info['cantidad']} unidad(es)</li>
+                        """
+
+                    message_html += """
+                            </ul>
+                        </li>
+                    """
+
+                message_html += """
+                    </ul>
+                """
+
+            messages.success(request, mark_safe(message_html))
+
+        return redirect("admin_dashboard")
