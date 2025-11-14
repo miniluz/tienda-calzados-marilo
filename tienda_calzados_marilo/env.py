@@ -22,6 +22,15 @@ class EnvConfig(NamedTuple):
     CHECKOUT_FORM_WINDOW_MINUTES: int
     PAYMENT_WINDOW_MINUTES: int
     CLEANUP_CRON_MINUTES: int
+    # Email configuration
+    USE_CONSOLE_MAIL: bool
+    WEBSITE_URL: str
+    EMAIL_HOST: str
+    EMAIL_PORT: int
+    EMAIL_HOST_USER: str
+    EMAIL_HOST_PASSWORD: str
+    EMAIL_USE_TLS: bool
+    EMAIL_USE_SSL: bool
 
     def get_order_reservation_minutes(self) -> int:
         """
@@ -83,6 +92,7 @@ def getEnvConfig() -> EnvConfig:
         return envConfig
 
     use_sqlite = getBoolFromEnv("USE_SQLITE")
+    use_console_mail = getBoolFromEnv("USE_CONSOLE_MAIL")
 
     envConfig = EnvConfig(
         DJANGO_DEBUG=getBoolFromEnv("DJANGO_DEBUG"),
@@ -100,6 +110,15 @@ def getEnvConfig() -> EnvConfig:
         CHECKOUT_FORM_WINDOW_MINUTES=getIntFromEnv("CHECKOUT_FORM_WINDOW_MINUTES", 10),
         PAYMENT_WINDOW_MINUTES=getIntFromEnv("PAYMENT_WINDOW_MINUTES", 5),
         CLEANUP_CRON_MINUTES=getIntFromEnv("CLEANUP_CRON_MINUTES", 5),
+        # Email configuration
+        USE_CONSOLE_MAIL=use_console_mail,
+        WEBSITE_URL=getFromEnv("WEBSITE_URL", optional=True) or "http://localhost:8000",
+        EMAIL_HOST=getFromEnv("EMAIL_HOST", use_console_mail),
+        EMAIL_PORT=getIntFromEnv("EMAIL_PORT", 25) if not use_console_mail else 25,
+        EMAIL_HOST_USER=getFromEnv("EMAIL_HOST_USER", use_console_mail),
+        EMAIL_HOST_PASSWORD=getFromEnv("EMAIL_HOST_PASSWORD", use_console_mail),
+        EMAIL_USE_TLS=getBoolFromEnv("EMAIL_USE_TLS"),
+        EMAIL_USE_SSL=getBoolFromEnv("EMAIL_USE_SSL"),
     )
 
     return envConfig
