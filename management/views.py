@@ -16,6 +16,7 @@ from .forms import (
     ZapatoForm,
     MarcaForm,
     CategoriaForm,
+    OrderFilterForm,
 )
 
 
@@ -668,3 +669,103 @@ class CategoriaDeleteView(View):
         categoria.delete()
         messages.success(request, f"Categoría {categoria_nombre} eliminada correctamente.")
         return redirect("categoria_list")
+
+
+# Order Management Views
+
+
+@method_decorator(staff_required, name="dispatch")
+class OrderManagementListView(View):
+    """View for managing all orders in the system"""
+
+    template_name = "management/order_list.html"
+
+    def get(self, request):
+        from orders.models import Order
+
+        orders = Order.objects.filter(pagado=True).select_related("usuario").order_by("-fecha_creacion")
+
+        # Initialize filter form with GET data
+        filter_form = OrderFilterForm(request.GET, estado_choices=Order.ESTADO_CHOICES)
+
+        if filter_form.is_valid():
+            # Filter by email
+            email = filter_form.cleaned_data.get("email")
+            if email:
+                orders = orders.filter(Q(usuario__email__icontains=email) | Q(email__icontains=email))
+
+            # Filter by name (searches in first_name, last_name, nombre, and apellido)
+            nombre = filter_form.cleaned_data.get("nombre")
+            if nombre:
+                orders = orders.filter(
+                    Q(usuario__first_name__icontains=nombre)
+                    | Q(usuario__last_name__icontains=nombre)
+                    | Q(nombre__icontains=nombre)
+                    | Q(apellido__icontains=nombre)
+                )
+
+            # Filter by status
+            estado = filter_form.cleaned_data.get("estado")
+            if estado:
+                orders = orders.filter(estado=estado)
+
+        context = {
+            "orders": orders,
+            "filter_form": filter_form,
+            "status_choices": Order.ESTADO_CHOICES,
+        }
+
+        return render(request, self.template_name, context)
+
+
+@method_decorator(staff_required, name="dispatch")
+class OrderManagementDetailView(View):
+    """View for viewing and managing a specific order"""
+
+    template_name = "management/order_detail.html"
+
+    def get(self, request, codigo):
+        from orders.models import Order
+
+        order = get_object_or_404(Order, codigo_pedido=codigo)
+
+        context = {
+            "order": order,
+            "status_choices": Order.ESTADO_CHOICES,
+        }
+
+        return render(request, self.template_name, context)
+
+    def post(self, request, codigo):
+        from orders.models import Order
+
+        order = get_object_or_404(Order, codigo_pedido=codigo)
+
+        # Update order status
+        new_status = request.POST.get("estado")
+        if new_status and new_status in dict(Order.ESTADO_CHOICES):
+            order.estado = new_status
+            order.save()
+            messages.success(request, f"Estado del pedido actualizado a {order.get_estado_display()}")
+        else:
+            messages.error(request, "Estado inválido")
+
+        return redirect("order_management_detail", codigo=codigo)
+
+
+@method_decorator(staff_required, name="dispatch")
+class CleanupExpiredOrdersView(View):
+    """View for manually triggering cleanup of expired unpaid orders"""
+
+    def post(self, request):
+        from orders.utils import cleanup_expired_orders
+
+        result = cleanup_expired_orders()
+
+        messages.success(
+            request,
+            f"Limpieza completada: {result['deleted_count']} pedidos eliminados, "
+            f"{result['restored_items']} items restaurados al stock.",
+        )
+
+        return redirect("admin_dashboard")
