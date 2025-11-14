@@ -172,21 +172,38 @@ def restore_stock(order):
         order: Order instance
 
     Returns:
-        Number of items restored
+        List of dicts with restoration details:
+        [
+            {
+                "zapato_nombre": "Nike Air Max",
+                "zapato_id": 1,
+                "talla": 42,
+                "cantidad": 3
+            },
+            ...
+        ]
     """
-    restored_count = 0
+    restored_items = []
 
     for item in order.items.all():
         try:
             talla_zapato = TallaZapato.objects.select_for_update().get(zapato=item.zapato, talla=item.talla)
             talla_zapato.stock += item.cantidad
             talla_zapato.save()
-            restored_count += 1
+
+            restored_items.append(
+                {
+                    "zapato_nombre": item.zapato.nombre,
+                    "zapato_id": item.zapato.id,
+                    "talla": item.talla,
+                    "cantidad": item.cantidad,
+                }
+            )
         except TallaZapato.DoesNotExist:
             # Talla no longer exists, skip
             continue
 
-    return restored_count
+    return restored_items
 
 
 def process_payment(order, payment_method="tarjeta"):
@@ -270,8 +287,23 @@ def cleanup_expired_orders():
     Restores stock and deletes the orders.
 
     Returns:
-        Dict with 'deleted_count' and 'restored_items' keys
+        Dict with:
+        - 'deleted_count': Number of orders deleted
+        - 'restored_items': Total number of order items restored
+        - 'stock_details': List of dicts grouped by shoe with nested size details
+          [
+              {
+                  "zapato_id": 1,
+                  "zapato_nombre": "Nike Air Max",
+                  "tallas": [
+                      {"talla": 38, "cantidad": 4},
+                      {"talla": 40, "cantidad": 1}
+                  ]
+              },
+              ...
+          ]
     """
+    from collections import defaultdict
     from orders.models import Order
 
     env_config = getEnvConfig()
@@ -282,11 +314,30 @@ def cleanup_expired_orders():
     expired_orders = Order.objects.filter(pagado=False, fecha_creacion__lt=expiration_time)
 
     deleted_count = 0
-    restored_items = 0
+    restored_items_count = 0
+    # Aggregate stock restorations by zapato_id -> {talla -> cantidad}
+    shoe_aggregation = defaultdict(lambda: {"nombre": "", "tallas": defaultdict(int)})
 
     for order in expired_orders:
-        restored_items += restore_stock(order)
+        restored_items = restore_stock(order)
+        restored_items_count += len(restored_items)
+
+        # Aggregate quantities by shoe -> talla
+        for item in restored_items:
+            zapato_id = item["zapato_id"]
+            shoe_aggregation[zapato_id]["nombre"] = item["zapato_nombre"]
+            shoe_aggregation[zapato_id]["tallas"][item["talla"]] += item["cantidad"]
+
         order.delete()
         deleted_count += 1
 
-    return {"deleted_count": deleted_count, "restored_items": restored_items}
+    # Convert aggregation to list of dicts with sorted tallas
+    stock_details = []
+    for zapato_id in sorted(shoe_aggregation.keys()):
+        shoe_data = shoe_aggregation[zapato_id]
+        tallas_list = [
+            {"talla": talla, "cantidad": cantidad} for talla, cantidad in sorted(shoe_data["tallas"].items())
+        ]
+        stock_details.append({"zapato_id": zapato_id, "zapato_nombre": shoe_data["nombre"], "tallas": tallas_list})
+
+    return {"deleted_count": deleted_count, "restored_items": restored_items_count, "stock_details": stock_details}

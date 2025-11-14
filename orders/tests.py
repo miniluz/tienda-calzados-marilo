@@ -163,9 +163,15 @@ class StockManagementTest(TestCase):
         self.assertEqual(self.talla.stock, 7)
 
         # Restore stock
-        restored = restore_stock(order)
+        restored_items = restore_stock(order)
 
-        self.assertEqual(restored, 1)
+        # Should return list with one item
+        self.assertEqual(len(restored_items), 1)
+        self.assertEqual(restored_items[0]["zapato_nombre"], "Test Zapato")
+        self.assertEqual(restored_items[0]["talla"], 42)
+        self.assertEqual(restored_items[0]["cantidad"], 3)
+
+        # Stock should be restored
         self.talla.refresh_from_db()
         self.assertEqual(self.talla.stock, 10)
 
@@ -263,6 +269,15 @@ class CleanupExpiredOrdersTest(TestCase):
 
         self.assertEqual(result["deleted_count"], 1)
         self.assertEqual(result["restored_items"], 1)
+
+        # Check stock details - hierarchical structure
+        self.assertEqual(len(result["stock_details"]), 1)
+        shoe = result["stock_details"][0]
+        self.assertEqual(shoe["zapato_nombre"], "Test Zapato")
+        self.assertEqual(shoe["zapato_id"], self.zapato.id)
+        self.assertEqual(len(shoe["tallas"]), 1)
+        self.assertEqual(shoe["tallas"][0]["talla"], 42)
+        self.assertEqual(shoe["tallas"][0]["cantidad"], 2)
 
         # Check stock was restored
         self.talla.refresh_from_db()
@@ -1186,3 +1201,203 @@ class OrderEmailTest(TestCase):
         status_email = mail.outbox[0]
         self.assertIn("Actualización", status_email.subject)
         self.assertIn("Calzados Marilo", status_email.subject)
+
+
+class CleanupExpiredOrdersViewTest(TestCase):
+    """Test CleanupExpiredOrdersView - admin-only cleanup endpoint"""
+
+    def setUp(self):
+        """Create test data"""
+        # Create users
+        self.regular_user = User.objects.create_user(
+            username="regular@test.com", email="regular@test.com", password="pass123"
+        )
+        self.staff_user = User.objects.create_user(
+            username="staff@test.com", email="staff@test.com", password="pass123", is_staff=True
+        )
+
+        # Create test shoe
+        self.marca = Marca.objects.create(nombre="Test Marca")
+        self.zapato1 = Zapato.objects.create(nombre="Nike Air Max", precio=100, genero="Unisex", marca=self.marca)
+        self.zapato2 = Zapato.objects.create(nombre="Adidas Superstar", precio=80, genero="Unisex", marca=self.marca)
+        self.talla1 = TallaZapato.objects.create(zapato=self.zapato1, talla=42, stock=10)
+        self.talla2 = TallaZapato.objects.create(zapato=self.zapato2, talla=38, stock=5)
+
+    def test_post_endpoint_works_for_staff(self):
+        """Staff user should be able to POST to cleanup endpoint without 404"""
+        from django.test import Client
+
+        client = Client()
+        client.login(username="staff@test.com", password="pass123")
+
+        response = client.post(reverse("cleanup_expired_orders"))
+
+        # Should redirect to dashboard (not 404)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("admin_dashboard"))
+
+    def test_non_staff_user_redirected(self):
+        """Non-staff user should be redirected to login"""
+        from django.test import Client
+
+        client = Client()
+        client.login(username="regular@test.com", password="pass123")
+
+        response = client.post(reverse("cleanup_expired_orders"))
+
+        # Should redirect to login page (not allowed)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response.url)
+
+    def test_anonymous_user_redirected(self):
+        """Anonymous user should be redirected to login"""
+        from django.test import Client
+
+        client = Client()
+        response = client.post(reverse("cleanup_expired_orders"))
+
+        # Should redirect to login page
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("login", response.url)
+
+    def test_detailed_feedback_with_single_order(self):
+        """Should display detailed stock restoration feedback"""
+        from django.test import Client
+
+        # Create expired order
+        expired_order = Order.objects.create(
+            codigo_pedido="EXPIRED123",
+            metodo_pago="tarjeta",
+            pagado=False,
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="test@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        OrderItem.objects.create(
+            pedido=expired_order, zapato=self.zapato1, talla=42, cantidad=3, precio_unitario=100, total=300
+        )
+
+        # Make order expired
+        expired_order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        expired_order.save()
+
+        # Login as staff and trigger cleanup
+        client = Client()
+        client.login(username="staff@test.com", password="pass123")
+        response = client.post(reverse("cleanup_expired_orders"), follow=True)
+
+        # Check message contains details
+        messages_list = list(response.context["messages"])
+        self.assertEqual(len(messages_list), 1)
+        message_text = str(messages_list[0])
+
+        self.assertIn("1 pedido(s) eliminado(s)", message_text)
+        self.assertIn("Nike Air Max", message_text)
+        self.assertIn("Talla 42", message_text)
+        self.assertIn("+3 unidad(es)", message_text)
+
+    def test_detailed_feedback_with_multiple_orders(self):
+        """Should aggregate stock restoration from multiple orders"""
+        from django.test import Client
+
+        # Create first expired order
+        order1 = Order.objects.create(
+            codigo_pedido="EXPIRED1",
+            metodo_pago="tarjeta",
+            pagado=False,
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="test@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+        order1.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        order1.save()
+
+        OrderItem.objects.create(
+            pedido=order1, zapato=self.zapato1, talla=42, cantidad=2, precio_unitario=100, total=200
+        )
+        OrderItem.objects.create(pedido=order1, zapato=self.zapato2, talla=38, cantidad=1, precio_unitario=80, total=80)
+
+        # Create second expired order with same shoe+size
+        order2 = Order.objects.create(
+            codigo_pedido="EXPIRED2",
+            metodo_pago="tarjeta",
+            pagado=False,
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User2",
+            email="test2@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+        order2.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        order2.save()
+
+        OrderItem.objects.create(
+            pedido=order2, zapato=self.zapato1, talla=42, cantidad=3, precio_unitario=100, total=300
+        )
+
+        # Login as staff and trigger cleanup
+        client = Client()
+        client.login(username="staff@test.com", password="pass123")
+        response = client.post(reverse("cleanup_expired_orders"), follow=True)
+
+        # Check message contains aggregated details
+        messages_list = list(response.context["messages"])
+        self.assertEqual(len(messages_list), 1)
+        message_text = str(messages_list[0])
+
+        self.assertIn("2 pedido(s) eliminado(s)", message_text)
+        # Nike Air Max should show aggregated quantity (2 + 3 = 5)
+        self.assertIn("Nike Air Max", message_text)
+        self.assertIn("Talla 42", message_text)
+        self.assertIn("+5 unidad(es)", message_text)
+        # Adidas should show its quantity
+        self.assertIn("Adidas Superstar", message_text)
+        self.assertIn("Talla 38", message_text)
+        self.assertIn("+1 unidad(es)", message_text)
+
+    def test_no_expired_orders_shows_info_message(self):
+        """Should show info message when no orders to clean up"""
+        from django.test import Client
+
+        client = Client()
+        client.login(username="staff@test.com", password="pass123")
+        response = client.post(reverse("cleanup_expired_orders"), follow=True)
+
+        # Check info message
+        messages_list = list(response.context["messages"])
+        self.assertEqual(len(messages_list), 1)
+        message_text = str(messages_list[0])
+
+        self.assertIn("No hay pedidos expirados", message_text)

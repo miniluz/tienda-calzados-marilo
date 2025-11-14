@@ -765,14 +765,49 @@ class CleanupExpiredOrdersView(View):
     """View for manually triggering cleanup of expired unpaid orders"""
 
     def post(self, request):
+        from django.utils.safestring import mark_safe
         from orders.utils import cleanup_expired_orders
 
         result = cleanup_expired_orders()
 
-        messages.success(
-            request,
-            f"Limpieza completada: {result['deleted_count']} pedidos eliminados, "
-            f"{result['restored_items']} items restaurados al stock.",
-        )
+        # Build detailed message
+        if result["deleted_count"] == 0:
+            messages.info(request, "No hay pedidos expirados para limpiar.")
+        else:
+            # Build HTML message with proper formatting
+            message_html = f"""
+                <strong>Limpieza completada:</strong> {result['deleted_count']} pedido(s) eliminado(s).
+            """
+
+            # Add stock details if any items were restored
+            if result["stock_details"]:
+                message_html += """
+                    <hr class="my-2">
+                    <strong>Stock restaurado:</strong>
+                    <ul class="mt-2 mb-0" style="list-style-type: disc;">
+                """
+
+                for shoe in result["stock_details"]:
+                    message_html += f"""
+                        <li>
+                            <strong>{shoe['zapato_nombre']}</strong> (ID: {shoe['zapato_id']}):
+                            <ul style="list-style-type: circle; margin-top: 0.25rem;">
+                    """
+
+                    for talla_info in shoe["tallas"]:
+                        message_html += f"""
+                                <li>Talla {talla_info['talla']}: +{talla_info['cantidad']} unidad(es)</li>
+                        """
+
+                    message_html += """
+                            </ul>
+                        </li>
+                    """
+
+                message_html += """
+                    </ul>
+                """
+
+            messages.success(request, mark_safe(message_html))
 
         return redirect("admin_dashboard")
