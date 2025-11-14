@@ -8,6 +8,7 @@ from django.views import View
 from django.db.models import Sum, F, Q
 from customer.models import Customer
 from catalog.models import Zapato, Marca, Categoria, TallaZapato
+from orders.emails import send_order_status_update_email
 from .forms import (
     CustomerEditForm,
     CustomerFilterForm,
@@ -744,8 +745,14 @@ class OrderManagementDetailView(View):
         # Update order status
         new_status = request.POST.get("estado")
         if new_status and new_status in dict(Order.ESTADO_CHOICES):
+            old_status = order.estado
             order.estado = new_status
             order.save()
+
+            # Send status update email if status changed
+            if old_status != new_status:
+                send_order_status_update_email(order)
+
             messages.success(request, f"Estado del pedido actualizado a {order.get_estado_display()}")
         else:
             messages.error(request, "Estado inválido")

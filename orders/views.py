@@ -3,13 +3,13 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
 from catalog.models import Zapato
+from orders.emails import send_order_confirmation_email
 from orders.forms import (
     BillingAddressForm,
     ContactInfoForm,
@@ -490,6 +490,9 @@ class CheckoutPaymentView(View):
                 order.pagado = True
                 order.save()
 
+                # Send confirmation email
+                send_order_confirmation_email(order)
+
                 # Clear session
                 if "checkout_order_id" in request.session:
                     del request.session["checkout_order_id"]
@@ -568,19 +571,8 @@ class OrderDetailView(View):
     def get(self, request, codigo):
         order = get_object_or_404(Order, codigo_pedido=codigo)
 
-        # Access control logic:
-        # - If order belongs to a registered user (usuario is not None):
-        #   - Only allow if current user is the owner OR is staff
-        # - If order is anonymous (usuario is None):
-        #   - Allow anyone with the code to see it
-        if order.usuario is not None:
-            # Order belongs to a registered user
-            if not request.user.is_authenticated:
-                # Anonymous users cannot see registered users' orders
-                raise Http404("Order not found")
-            if request.user != order.usuario and not request.user.is_staff:
-                # User trying to see another user's order (and not staff)
-                raise Http404("Order not found")
+        # Anyone with the order code can view the order
+        # This allows customers to track orders via email links
 
         context = {
             "order": order,
@@ -607,7 +599,9 @@ class OrderLookupView(View):
 
             # Try to get the order
             try:
-                order = Order.objects.get(codigo_pedido=codigo)
+                Order.objects.get(codigo_pedido=codigo)
+                # Anyone with the code can view the order
+                return redirect("orders:order_detail", codigo=codigo)
             except Order.DoesNotExist:
                 # Order doesn't exist - show error
                 messages.error(
@@ -615,28 +609,6 @@ class OrderLookupView(View):
                     "No se encontró ningún pedido con ese código. Por favor, verifica el código e inténtalo de nuevo.",
                 )
                 return render(request, "orders/order_lookup.html", {"form": form})
-
-            # Apply same access control logic as OrderDetailView
-            # If user doesn't have access, show the same error as "not found" to avoid information leakage
-            if order.usuario is not None:
-                # Order belongs to a registered user
-                if not request.user.is_authenticated:
-                    # Anonymous users cannot see registered users' orders
-                    messages.error(
-                        request,
-                        "No se encontró ningún pedido con ese código. Por favor, verifica el código e inténtalo de nuevo.",
-                    )
-                    return render(request, "orders/order_lookup.html", {"form": form})
-                if request.user != order.usuario and not request.user.is_staff:
-                    # User trying to see another user's order (and not staff)
-                    messages.error(
-                        request,
-                        "No se encontró ningún pedido con ese código. Por favor, verifica el código e inténtalo de nuevo.",
-                    )
-                    return render(request, "orders/order_lookup.html", {"form": form})
-
-            # User has access - redirect to order detail page
-            return redirect("orders:order_detail", codigo=codigo)
 
         # Form is invalid - render with errors
         context = {
