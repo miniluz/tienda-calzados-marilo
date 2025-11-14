@@ -668,3 +668,200 @@ class CustomerFilteringTests(TestCase):
         customers = response.context["customers"]
         # Should match "John", "Bob", and "Doe"
         self.assertGreaterEqual(len(customers), 2)
+
+
+# ==================== ORDER FILTERING TESTS ====================
+
+
+class OrderFilteringTests(TestCase):
+    """Test order filtering in management interface"""
+
+    def setUp(self):
+        self.client = Client()
+
+        # Create staff user
+        self.admin_user = User.objects.create_user(
+            username="admin@example.com", email="admin@example.com", password="AdminPass123!", is_staff=True
+        )
+
+        # Create customer users
+        self.user1 = User.objects.create_user(
+            username="john.doe@example.com",
+            email="john.doe@example.com",
+            password="Pass123!",
+            first_name="John",
+            last_name="Doe",
+        )
+
+        self.user2 = User.objects.create_user(
+            username="jane.smith@example.com",
+            email="jane.smith@example.com",
+            password="Pass123!",
+            first_name="Jane",
+            last_name="Smith",
+        )
+
+        # Create orders
+        from orders.models import Order
+
+        self.order1 = Order.objects.create(
+            codigo_pedido="ORDER001",
+            usuario=self.user1,
+            metodo_pago="tarjeta",
+            pagado=True,
+            estado="por_enviar",
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="John",
+            apellido="Doe",
+            email="john.doe@example.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        self.order2 = Order.objects.create(
+            codigo_pedido="ORDER002",
+            usuario=self.user2,
+            metodo_pago="contrarembolso",
+            pagado=True,
+            estado="en_envio",
+            subtotal=200,
+            impuestos=42,
+            coste_entrega=5,
+            total=247,
+            nombre="Jane",
+            apellido="Smith",
+            email="jane.smith@example.com",
+            telefono="987654321",
+            direccion_envio="Test Address 2",
+            ciudad_envio="Test City 2",
+            codigo_postal_envio="54321",
+            direccion_facturacion="Test Address 2",
+            ciudad_facturacion="Test City 2",
+            codigo_postal_facturacion="54321",
+        )
+
+        # Anonymous order
+        self.order3 = Order.objects.create(
+            codigo_pedido="ORDER003",
+            usuario=None,
+            metodo_pago="tarjeta",
+            pagado=True,
+            estado="recibido",
+            subtotal=150,
+            impuestos=31.5,
+            coste_entrega=5,
+            total=186.5,
+            nombre="Anonymous",
+            apellido="User",
+            email="anon@test.com",
+            telefono="555555555",
+            direccion_envio="Test Address 3",
+            ciudad_envio="Test City 3",
+            codigo_postal_envio="11111",
+            direccion_facturacion="Test Address 3",
+            ciudad_facturacion="Test City 3",
+            codigo_postal_facturacion="11111",
+        )
+
+        self.client.login(username="admin@example.com", password="AdminPass123!")
+
+    def test_order_filter_by_email_registered_user(self):
+        """Test filtering orders by registered user email"""
+        response = self.client.get(reverse("order_management_list"), {"email": "john.doe@example.com"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER001")
+
+    def test_order_filter_by_email_anonymous_order(self):
+        """Test filtering orders by anonymous order email"""
+        response = self.client.get(reverse("order_management_list"), {"email": "anon@test.com"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER003")
+
+    def test_order_filter_by_email_partial_match(self):
+        """Test filtering orders by partial email match"""
+        response = self.client.get(reverse("order_management_list"), {"email": "example.com"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 2)  # Should match ORDER001 and ORDER002
+
+    def test_order_filter_by_name(self):
+        """Test filtering orders by user name"""
+        response = self.client.get(reverse("order_management_list"), {"nombre": "Jane"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER002")
+
+    def test_order_filter_by_last_name(self):
+        """Test filtering orders by last name"""
+        response = self.client.get(reverse("order_management_list"), {"nombre": "Doe"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER001")
+
+    def test_order_filter_by_anonymous_name(self):
+        """Test filtering orders by anonymous user's name"""
+        response = self.client.get(reverse("order_management_list"), {"nombre": "Anonymous"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER003")
+
+    def test_order_filter_by_estado(self):
+        """Test filtering orders by status"""
+        response = self.client.get(reverse("order_management_list"), {"estado": "en_envio"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER002")
+
+    def test_order_filter_combined(self):
+        """Test filtering orders with multiple filters"""
+        response = self.client.get(
+            reverse("order_management_list"), {"email": "john.doe@example.com", "estado": "por_enviar"}
+        )
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER001")
+
+    def test_order_filter_combined_no_match(self):
+        """Test filtering orders with conflicting filters"""
+        response = self.client.get(
+            reverse("order_management_list"), {"email": "john.doe@example.com", "estado": "en_envio"}
+        )
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 0)  # John's order is not in "en_envio" status
+
+    def test_order_filter_case_insensitive(self):
+        """Test that order filtering is case insensitive"""
+        response = self.client.get(reverse("order_management_list"), {"nombre": "jane"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+
+        response = self.client.get(reverse("order_management_list"), {"email": "JOHN.DOE"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+
+    def test_order_list_shows_all_without_filter(self):
+        """Test that order list shows all orders when no filter is applied"""
+        response = self.client.get(reverse("order_management_list"))
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 3)  # All 3 orders
