@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedido {{ order.codigo_pedido }} - Gestión - Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cart-check-fill"></i> Pedido {{ order.codigo_pedido }}</h2>
+        <a href="{% url 'order_management_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Pedidos
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Order Status Update -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Actualizar Estado del Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row align-items-end">
+                            <div class="col-md-8 mb-3">
+                                <label for="estado" class="form-label">Estado Actual</label>
+                                <select name="estado" id="estado" class="form-select">
+                                    {% for value, display in status_choices %}
+                                    <option value="{{ value }}" {% if order.estado == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-check-circle"></i> Actualizar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-box"></i> Artículos del Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Talla</th>
+                                    <th>Cantidad</th>
+                                    <th class="text-end">Precio Unit.</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                <tr>
+                                    <td>{{ item.zapato.nombre }}</td>
+                                    <td>{{ item.talla }}</td>
+                                    <td>{{ item.cantidad }}</td>
+                                    <td class="text-end">€{{ item.precio_unitario }}</td>
+                                    <td class="text-end">€{{ item.total }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Information -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-person"></i> Información del Cliente</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Nombre:</strong> {{ order.nombre }} {{ order.apellido }}</p>
+                            <p class="mb-1"><strong>Email:</strong> {{ order.email }}</p>
+                            <p class="mb-1"><strong>Teléfono:</strong> {{ order.telefono }}</p>
+                            {% if order.usuario %}
+                            <p class="mb-0"><strong>Usuario:</strong> {{ order.usuario.username }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-truck"></i> Dirección de Envío</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1">{{ order.direccion_envio }}</p>
+                            <p class="mb-0">{{ order.ciudad_envio }}, {{ order.codigo_postal_envio }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-receipt"></i> Dirección de Facturación</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1">{{ order.direccion_facturacion }}</p>
+                            <p class="mb-0">{{ order.ciudad_facturacion }}, {{ order.codigo_postal_facturacion }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Order Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Resumen</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span>€{{ order.subtotal }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Envío:</span>
+                        <span>€{{ order.coste_entrega }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>IVA:</span>
+                        <span>€{{ order.impuestos }}</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <strong>Total:</strong>
+                        <strong class="fs-4">€{{ order.total }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Information -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Información del Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>Código:</strong><br>
+                        <span class="font-monospace">{{ order.codigo_pedido }}</span>
+                    </p>
+                    <p class="mb-2">
+                        <strong>Estado:</strong><br>
+                        <span class="badge 
+                            {% if order.estado == 'recibido' %}bg-success
+                            {% elif order.estado == 'en_envio' %}bg-primary
+                            {% else %}bg-warning{% endif %} fs-6">
+                            {{ order.get_estado_display }}
+                        </span>
+                    </p>
+                    <p class="mb-2">
+                        <strong>Método de Pago:</strong><br>
+                        {{ order.get_metodo_pago_display }}
+                    </p>
+                    <p class="mb-2">
+                        <strong>Pagado:</strong><br>
+                        {% if order.pagado %}
+                        <i class="bi bi-check-circle-fill text-success"></i> Sí
+                        {% else %}
+                        <i class="bi bi-x-circle-fill text-danger"></i> No
+                        {% endif %}
+                    </p>
+                    <p class="mb-2">
+                        <strong>Fecha de Creación:</strong><br>
+                        {{ order.fecha_creacion|date:"d/m/Y H:i" }}
+                    </p>
+                    <p class="mb-0">
+                        <strong>Última Actualización:</strong><br>
+                        {{ order.fecha_actualizacion|date:"d/m/Y H:i" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -37,6 +37,12 @@
                     <strong>Fecha de registro:</strong> {{ customer.created_at|date:"d/m/Y H:i" }}
                 </div>
 
+                <div class="mb-4">
+                    <a href="{% url 'order_management_list' %}?email={{ user.email|urlencode }}" class="btn btn-info w-100">
+                        <i class="bi bi-cart-check"></i> Ver pedidos de este cliente
+                    </a>
+                </div>
+
                 <div class="d-flex gap-2 justify-content-between">
                     <a href="{% url 'customer_list' %}" class="btn btn-secondary">Volver</a>
                     <div>
