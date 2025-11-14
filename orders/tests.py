@@ -1,6 +1,7 @@
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -415,7 +416,7 @@ class FormValidationTest(TestCase):
 
 
 class OrderDetailAccessControlTest(TestCase):
-    """Test access control for OrderDetailView"""
+    """Test access control for OrderDetailView - anyone with code can view"""
 
     def setUp(self):
         """Create test data"""
@@ -478,13 +479,13 @@ class OrderDetailAccessControlTest(TestCase):
         response = client.get(reverse("orders:order_detail", kwargs={"codigo": "ANON123"}))
         self.assertEqual(response.status_code, 200)
 
-    def test_anonymous_user_cannot_view_registered_user_order(self):
-        """Anonymous user should NOT be able to view registered user's order"""
+    def test_anonymous_user_can_view_registered_user_order(self):
+        """Anyone with the code can view any order (for email tracking)"""
         from django.test import Client
 
         client = Client()
         response = client.get(reverse("orders:order_detail", kwargs={"codigo": "USER1ORDER"}))
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
     def test_registered_user_can_view_own_order(self):
         """Registered user should be able to view their own order"""
@@ -495,14 +496,14 @@ class OrderDetailAccessControlTest(TestCase):
         response = client.get(reverse("orders:order_detail", kwargs={"codigo": "USER1ORDER"}))
         self.assertEqual(response.status_code, 200)
 
-    def test_registered_user_cannot_view_another_user_order(self):
-        """Registered user should NOT be able to view another user's order"""
+    def test_registered_user_can_view_another_user_order(self):
+        """Anyone with the code can view any order (for email tracking)"""
         from django.test import Client
 
         client = Client()
         client.login(username="user2@test.com", password="pass123")
         response = client.get(reverse("orders:order_detail", kwargs={"codigo": "USER1ORDER"}))
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
     def test_staff_can_view_any_order(self):
         """Staff user should be able to view any order"""
@@ -649,7 +650,7 @@ class OrderLookupFormTest(TestCase):
 
 
 class OrderLookupViewTest(TestCase):
-    """Test OrderLookupView functionality and access control"""
+    """Test OrderLookupView functionality - anyone with code can lookup"""
 
     def setUp(self):
         """Create test data"""
@@ -743,32 +744,24 @@ class OrderLookupViewTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("orders:order_detail", kwargs={"codigo": "USER1ORDER"}))
 
-    def test_anonymous_user_cannot_lookup_registered_user_order(self):
-        """Anonymous user should get 'not found' error for registered user's order"""
+    def test_anonymous_user_can_lookup_registered_user_order(self):
+        """Anyone with the code can lookup any order (for email tracking)"""
         from django.test import Client
 
         client = Client()
         response = client.post(reverse("orders:order_lookup"), {"codigo_pedido": "USER1ORDER"})
-        self.assertEqual(response.status_code, 200)  # Stays on lookup page
-        self.assertTemplateUsed(response, "orders/order_lookup.html")
-        # Check error message
-        messages_list = list(response.context["messages"])
-        self.assertEqual(len(messages_list), 1)
-        self.assertIn("No se encontró", str(messages_list[0]))
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("orders:order_detail", kwargs={"codigo": "USER1ORDER"}))
 
-    def test_different_user_cannot_lookup_another_users_order(self):
-        """User should get 'not found' error for another user's order"""
+    def test_different_user_can_lookup_another_users_order(self):
+        """Anyone with the code can lookup any order (for email tracking)"""
         from django.test import Client
 
         client = Client()
         client.login(username="user2@test.com", password="pass123")
         response = client.post(reverse("orders:order_lookup"), {"codigo_pedido": "USER1ORDER"})
-        self.assertEqual(response.status_code, 200)  # Stays on lookup page
-        self.assertTemplateUsed(response, "orders/order_lookup.html")
-        # Check error message
-        messages_list = list(response.context["messages"])
-        self.assertEqual(len(messages_list), 1)
-        self.assertIn("No se encontró", str(messages_list[0]))
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("orders:order_detail", kwargs={"codigo": "USER1ORDER"}))
 
     def test_staff_can_lookup_any_order(self):
         """Staff user should be able to lookup any order"""
@@ -856,3 +849,340 @@ class OrderLookupNavbarLinkTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse("orders:order_lookup"))
         self.assertContains(response, "Seguimiento de pedidos")
+
+
+class OrderEmailTest(TestCase):
+    """Test email sending functionality for orders"""
+
+    def setUp(self):
+        """Create test data"""
+        # Create users
+        self.user_with_same_email = User.objects.create_user(
+            username="user@test.com", email="user@test.com", password="pass123"
+        )
+        self.user_with_different_email = User.objects.create_user(
+            username="user2@test.com", email="user2account@test.com", password="pass123"  # Different from order email
+        )
+
+        # Create marca for zapato
+        self.marca = Marca.objects.create(nombre="Test Marca")
+
+        # Create zapato with stock
+        self.zapato = Zapato.objects.create(
+            nombre="Test Shoe",
+            descripcion="Test description",
+            precio=Decimal("100.00"),
+            marca=self.marca,
+            estaDisponible=True,
+        )
+        TallaZapato.objects.create(zapato=self.zapato, talla=42, stock=10)
+
+    def test_confirmation_email_sent_after_payment(self):
+        """Test that confirmation email is sent after successful payment"""
+        from orders.emails import send_order_confirmation_email
+
+        # Create paid order
+        order = Order.objects.create(
+            codigo_pedido="TEST123",
+            usuario=None,
+            metodo_pago="tarjeta",
+            pagado=True,
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="customer@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Send confirmation email
+        send_order_confirmation_email(order)
+
+        # Test that one email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Verify email details
+        sent_email = mail.outbox[0]
+        self.assertIn("Confirmación de Pedido", sent_email.subject)
+        self.assertIn("TEST123", sent_email.subject)
+        self.assertEqual(sent_email.to, ["customer@test.com"])
+        self.assertIn("TEST123", sent_email.body)
+        # Check HTML version contains tracking link
+        html_body = sent_email.alternatives[0][0]
+        self.assertIn("/orders/TEST123/", html_body)
+
+    def test_confirmation_email_sent_to_both_emails_when_different(self):
+        """Test that confirmation email is sent to both contact and user email when different"""
+        from orders.emails import send_order_confirmation_email
+
+        # Create order with user that has different email
+        order = Order.objects.create(
+            codigo_pedido="TEST456",
+            usuario=self.user_with_different_email,
+            metodo_pago="tarjeta",
+            pagado=True,
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="contact@test.com",  # Different from user's account email
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Send confirmation email
+        send_order_confirmation_email(order)
+
+        # Test that one email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Verify it was sent to both emails
+        sent_email = mail.outbox[0]
+        self.assertIn("contact@test.com", sent_email.to)
+        self.assertIn("user2account@test.com", sent_email.to)
+        self.assertEqual(len(sent_email.to), 2)
+
+    def test_confirmation_email_sent_once_when_same_email(self):
+        """Test that confirmation email is sent only once when contact and user email are the same"""
+        from orders.emails import send_order_confirmation_email
+
+        # Create order with user that has same email
+        order = Order.objects.create(
+            codigo_pedido="TEST789",
+            usuario=self.user_with_same_email,
+            metodo_pago="tarjeta",
+            pagado=True,
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="user@test.com",  # Same as user's account email
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Send confirmation email
+        send_order_confirmation_email(order)
+
+        # Test that one email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Verify it was sent only to one email address
+        sent_email = mail.outbox[0]
+        self.assertEqual(sent_email.to, ["user@test.com"])
+        self.assertEqual(len(sent_email.to), 1)
+
+    def test_confirmation_email_sent_only_to_contact_for_anonymous_order(self):
+        """Test that confirmation email is sent only to contact email for anonymous orders"""
+        from orders.emails import send_order_confirmation_email
+
+        # Create anonymous order
+        order = Order.objects.create(
+            codigo_pedido="ANON123",
+            usuario=None,  # Anonymous
+            metodo_pago="contrarembolso",
+            pagado=True,
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Anonymous",
+            apellido="User",
+            email="anon@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Send confirmation email
+        send_order_confirmation_email(order)
+
+        # Test that one email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Verify it was sent only to contact email
+        sent_email = mail.outbox[0]
+        self.assertEqual(sent_email.to, ["anon@test.com"])
+        self.assertEqual(len(sent_email.to), 1)
+
+    def test_status_update_email_sent_when_admin_updates_status(self):
+        """Test that status update email is sent when admin changes order status"""
+        from orders.emails import send_order_status_update_email
+
+        # Create order
+        order = Order.objects.create(
+            codigo_pedido="STATUS123",
+            usuario=self.user_with_different_email,
+            metodo_pago="tarjeta",
+            pagado=True,
+            estado="por_enviar",
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="contact@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Update status
+        order.estado = "en_envio"
+        order.save()
+
+        # Send status update email
+        send_order_status_update_email(order)
+
+        # Test that one email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Verify email details
+        sent_email = mail.outbox[0]
+        self.assertIn("Actualización de Pedido", sent_email.subject)
+        self.assertIn("STATUS123", sent_email.subject)
+        self.assertIn("STATUS123", sent_email.body)
+        # Check HTML version contains tracking link
+        html_body = sent_email.alternatives[0][0]
+        self.assertIn("/orders/STATUS123/", html_body)
+
+    def test_status_update_email_sent_only_to_contact_email(self):
+        """Test that status update email is sent ONLY to contact email, not user email"""
+        from orders.emails import send_order_status_update_email
+
+        # Create order with user that has different email
+        order = Order.objects.create(
+            codigo_pedido="STATUS456",
+            usuario=self.user_with_different_email,
+            metodo_pago="tarjeta",
+            pagado=True,
+            estado="por_enviar",
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="contact@test.com",  # Different from user's account email
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Update status
+        order.estado = "recibido"
+        order.save()
+
+        # Send status update email
+        send_order_status_update_email(order)
+
+        # Test that one email was sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        # Verify it was sent ONLY to contact email, not user email
+        sent_email = mail.outbox[0]
+        self.assertEqual(sent_email.to, ["contact@test.com"])
+        self.assertNotIn("user2account@test.com", sent_email.to)
+        self.assertEqual(len(sent_email.to), 1)
+
+    def test_email_contains_spanish_content(self):
+        """Test that emails are in Spanish"""
+        from orders.emails import send_order_confirmation_email, send_order_status_update_email
+
+        # Create order
+        order = Order.objects.create(
+            codigo_pedido="SPANISH123",
+            usuario=None,
+            metodo_pago="tarjeta",
+            pagado=True,
+            estado="por_enviar",
+            subtotal=100,
+            impuestos=21,
+            coste_entrega=5,
+            total=126,
+            nombre="Test",
+            apellido="User",
+            email="test@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        # Clear mail outbox
+        mail.outbox = []
+
+        # Send confirmation email
+        send_order_confirmation_email(order)
+
+        # Check Spanish content in confirmation
+        conf_email = mail.outbox[0]
+        self.assertIn("Confirmación", conf_email.subject)
+        self.assertIn("Calzados Marilo", conf_email.subject)
+
+        # Clear and send status update
+        mail.outbox = []
+        order.estado = "en_envio"
+        order.save()
+        send_order_status_update_email(order)
+
+        # Check Spanish content in status update
+        status_email = mail.outbox[0]
+        self.assertIn("Actualización", status_email.subject)
+        self.assertIn("Calzados Marilo", status_email.subject)
