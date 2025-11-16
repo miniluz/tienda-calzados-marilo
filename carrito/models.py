@@ -24,7 +24,7 @@ class Carrito(models.Model):
 
 class ZapatoCarrito(models.Model):
     carrito = models.ForeignKey("Carrito", on_delete=models.CASCADE, related_name="zapatos")
-    zapato = models.ForeignKey("catalog.Zapato", on_delete=models.PROTECT, related_name="zapatos_carrito")
+    zapato = models.ForeignKey("catalog.Zapato", on_delete=models.CASCADE, related_name="zapatos_carrito")
     cantidad = models.IntegerField("Cantidad", validators=[MinValueValidator(1)], default=1)
     talla = models.IntegerField("Talla")
     fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
