@@ -1,6 +1,10 @@
 import secrets
 import string
+import os
+import stripe
+
 from decimal import Decimal
+from time import time
 
 from django.db import transaction
 from django.utils import timezone
@@ -271,11 +275,72 @@ def process_payment(order, payment_method="tarjeta"):
     # - Customer email: order.email
     # - Timeout: PAYMENT_WINDOW_MINUTES * 60 seconds
 
-    return {
-        "success": True,
-        "transaction_id": f"MOCK_{order.codigo_pedido}_{timezone.now().timestamp()}",
-        "message": "Pago procesado correctamente",
-    }
+    stripe_secret = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe_secret:
+        return {
+            "success": False,
+            "transaction_id": None,
+            "error": "config",
+            "message": "Error en la configuración de pago (falta STRIPE_SECRET_KEY).",
+        }
+
+    stripe.api_key = stripe_secret
+
+    amount_cents = int(order.total * 100)
+
+    expires_at = int(time.time()) + 300  # 300 segundos = 5 minutos
+
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency="eur",
+            payment_method_types=["card"],
+            payment_method="pm_card_visa",  # test card de Stripe
+            confirm=True,  # lo confirma directamente
+            description=f"Pedido {order.codigo_pedido}",
+            metadata={
+                "order_id": str(order.id),
+                "codigo_pedido": order.codigo_pedido,
+            },
+            receipt_email=order.email if order.email else None,
+            expires_at=expires_at,  # Aquí estamos configurando el timeout
+        )
+
+    except stripe.error.CardError as e:
+        return {
+            "success": False,
+            "transaction_id": None,
+            "error": "declined",
+            "message": f"Tu tarjeta ha sido rechazada: {e.user_message or 'Tarjeta no válida'}",
+        }
+    except stripe.error.StripeError:
+        return {
+            "success": False,
+            "transaction_id": None,
+            "error": "technical",
+            "message": "Ha ocurrido un problema al procesar el pago. Inténtalo de nuevo más tarde.",
+        }
+    except Exception:
+        return {
+            "success": False,
+            "transaction_id": None,
+            "error": "technical",
+            "message": "Error inesperado al procesar el pago.",
+        }
+
+    if intent.status == "succeeded":
+        return {
+            "success": True,
+            "transaction_id": intent.id,
+            "message": "Pago procesado correctamente con Stripe.",
+        }
+    else:
+        return {
+            "success": False,
+            "transaction_id": intent.id,
+            "error": "incomplete",
+            "message": f"El pago no se ha completado (estado: {intent.status}).",
+        }
 
 
 def cleanup_expired_orders():
