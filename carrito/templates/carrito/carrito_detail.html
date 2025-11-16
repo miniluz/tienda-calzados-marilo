@@ -93,7 +93,17 @@
                             </div>
                         </div>
                         <div class="cart-item-quantity">
-                            <span><strong>Cantidad:</strong> {{ item.cantidad }}</span>
+                            <form action="{% url 'carrito:update_quantity_carrito' item.id %}" method="post" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="decrease">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" style="padding: 2px 8px;">−</button>
+                            </form>
+                            <span style="margin: 0 15px; font-weight: bold; min-width: 30px; display: inline-block; text-align: center;">{{ item.cantidad }}</span>
+                            <form action="{% url 'carrito:update_quantity_carrito' item.id %}" method="post" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="increase">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" style="padding: 2px 8px;">+</button>
+                            </form>
                         </div>
                         <div class="cart-item-price">
                             {% if item.zapato.precioOferta %}

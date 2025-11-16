@@ -86,3 +86,27 @@ def remove_from_carrito(request, zapato_carrito_id):
     zapato_carrito.delete()
     messages.success(request, f"{nombre_zapato} (Talla {talla}) eliminado del carrito con éxito")
     return redirect("carrito:view_carrito")
+
+
+@require_POST
+def update_quantity_carrito(request, zapato_carrito_id):
+    zapato_carrito = get_object_or_404(ZapatoCarrito, id=zapato_carrito_id)
+    action = request.POST.get("action")
+
+    if action == "increase":
+        zapato_carrito.cantidad += 1
+        zapato_carrito.save()
+        messages.success(request, f"Cantidad actualizada a {zapato_carrito.cantidad}")
+    elif action == "decrease":
+        if zapato_carrito.cantidad > 1:
+            zapato_carrito.cantidad -= 1
+            zapato_carrito.save()
+            messages.success(request, f"Cantidad actualizada a {zapato_carrito.cantidad}")
+        else:
+            # Si la cantidad es 1, eliminar el item
+            nombre_zapato = zapato_carrito.zapato.nombre
+            talla = zapato_carrito.talla
+            zapato_carrito.delete()
+            messages.success(request, f"{nombre_zapato} (Talla {talla}) eliminado del carrito")
+
+    return redirect("carrito:view_carrito")
