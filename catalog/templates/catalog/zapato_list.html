@@ -332,7 +332,74 @@
             }
         });
 
+        // Add to cart functionality
+        productCards.forEach(card => {
+            const addButton = card.querySelector('.add-button');
+            const productId = card.getAttribute('data-product-id');
+            const sizeSelector = card.querySelector(`.size-selector[data-product-id="${productId}"]`);
+
+            if (addButton && !addButton.disabled) {
+                addButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Get selected size
+                    const selectedSize = sizeSelector ? sizeSelector.querySelector('input[type="radio"]:checked') : null;
+
+                    if (!selectedSize) {
+                        alert('Por favor, selecciona una talla antes de añadir al carrito');
+                        return;
+                    }
+
+                    // Get CSRF token
+                    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+
+                    // Create form and submit
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/carrito/add/${productId}/`;
+
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrftoken;
+
+                    const tallaInput = document.createElement('input');
+                    tallaInput.type = 'hidden';
+                    tallaInput.name = 'talla';
+                    tallaInput.value = selectedSize.value;
+
+                    const cantidadInput = document.createElement('input');
+                    cantidadInput.type = 'hidden';
+                    cantidadInput.name = 'cantidad';
+                    cantidadInput.value = '1';
+
+                    form.appendChild(csrfInput);
+                    form.appendChild(tallaInput);
+                    form.appendChild(cantidadInput);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            }
+        });
         
     });
+
+    // Helper function to get CSRF token from cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 </script>
 {% endblock %}

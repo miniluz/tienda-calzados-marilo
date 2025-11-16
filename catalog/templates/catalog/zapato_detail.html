@@ -331,6 +331,68 @@
                 sizeNotice.style.display = 'none';
             });
         });
+
+        // Add to cart functionality
+        if (addCartBtn) {
+            addCartBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Get selected size
+                const selectedSize = document.querySelector('.sizes input[type="radio"]:checked');
+
+                if (!selectedSize) {
+                    alert('Por favor, selecciona una talla antes de añadir al carrito');
+                    sizeNotice.style.display = 'flex';
+                    return;
+                }
+
+                // Get CSRF token
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+
+                // Create form and submit
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/carrito/add/{{ zapato.id }}/`;
+
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrftoken;
+
+                const tallaInput = document.createElement('input');
+                tallaInput.type = 'hidden';
+                tallaInput.name = 'talla';
+                tallaInput.value = selectedSize.value;
+
+                const cantidadInput = document.createElement('input');
+                cantidadInput.type = 'hidden';
+                cantidadInput.name = 'cantidad';
+                cantidadInput.value = '1';
+
+                form.appendChild(csrfInput);
+                form.appendChild(tallaInput);
+                form.appendChild(cantidadInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            });
+        }
     });
+
+    // Helper function to get CSRF token from cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 </script>
 {% endblock %}
