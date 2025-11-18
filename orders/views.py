@@ -1,9 +1,13 @@
 from decimal import Decimal
+import os
+import stripe
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -426,6 +430,21 @@ class CheckoutPaymentView(View):
 
         return render(request, "orders/checkout_payment.html", context)
 
+    def _get_order(self, request):
+        order_id = request.session.get("checkout_order_id")
+        if not order_id:
+            return None
+        try:
+            order = Order.objects.get(id=order_id, pagado=False)
+
+            if request.user.is_authenticated and order.usuario is not None:
+                if order.usuario != request.user:
+                    return None
+
+            return order
+        except Order.DoesNotExist:
+            return None
+
     def post(self, request):
         order = self._get_order(request)
         if not order:
@@ -455,33 +474,69 @@ class CheckoutPaymentView(View):
             order.metodo_pago = metodo_pago
             order.save()
 
-            result = process_payment(order, metodo_pago)
+            # For card payments, use Stripe Checkout (two-step flow):
+            # 1) Redirect user to Stripe Checkout page
+            # 2) Stripe sends webhook on completion and redirects user back
+            if metodo_pago == "tarjeta":
+                stripe_secret = os.getenv("STRIPE_SECRET_KEY")
+                if not stripe_secret:
+                    messages.error(request, "Configuración de Stripe incompleta.")
+                else:
+                    stripe.api_key = stripe_secret
+                    try:
+                        # Create a single-line item for the whole order
+                        session = stripe.checkout.Session.create(
+                            payment_method_types=["card"],
+                            line_items=[
+                                {
+                                    "price_data": {
+                                        "currency": "eur",
+                                        "product_data": {"name": f"Pedido {order.codigo_pedido}"},
+                                        "unit_amount": int(order.total * 100),
+                                    },
+                                    "quantity": 1,
+                                }
+                            ],
+                            mode="payment",
+                            metadata={"order_id": str(order.id), "codigo_pedido": order.codigo_pedido},
+                            success_url=request.build_absolute_uri(reverse("orders:stripe_return")),
+                            cancel_url=request.build_absolute_uri(reverse("orders:stripe_cancel")),
+                        )
 
-            if result["success"]:
-                order.pagado = True
-                order.save()
+                        # Redirect the user to the Stripe Checkout page
+                        return redirect(session.url)
 
-                email_sent = send_order_confirmation_email(order)
-                if not email_sent:
-                    # Do not fail the checkout if email cannot be sent; warn the user.
-                    messages.warning(
-                        request,
-                        "El pedido se ha completado pero no se ha podido enviar el correo de confirmación. "
-                        "Comprueba la configuración de correo o inténtalo más tarde.",
-                    )
-
-                if "checkout_order_id" in request.session:
-                    del request.session["checkout_order_id"]
-                if "checkout_descuento" in request.session:
-                    del request.session["checkout_descuento"]
-
-                messages.success(request, result["message"])
-                return redirect("orders:order_success", codigo=order.codigo_pedido)
+                    except Exception as e:
+                        messages.error(request, f"Error al iniciar el pago con Stripe: {e}")
             else:
-                messages.error(
-                    request,
-                    f"Error al procesar el pago: {result.get('message', 'Error desconocido')}",
-                )
+                # Non-card payment: continue synchronous processing
+                result = process_payment(order, metodo_pago)
+
+                if result["success"]:
+                    order.pagado = True
+                    order.save()
+
+                    email_sent = send_order_confirmation_email(order)
+                    if not email_sent:
+                        # Do not fail the checkout if email cannot be sent; warn the user.
+                        messages.warning(
+                            request,
+                            "El pedido se ha completado pero no se ha podido enviar el correo de confirmación. "
+                            "Comprueba la configuración de correo o inténtalo más tarde.",
+                        )
+
+                    if "checkout_order_id" in request.session:
+                        del request.session["checkout_order_id"]
+                    if "checkout_descuento" in request.session:
+                        del request.session["checkout_descuento"]
+
+                    messages.success(request, result["message"])
+                    return redirect("orders:order_success", codigo=order.codigo_pedido)
+                else:
+                    messages.error(
+                        request,
+                        f"Error al procesar el pago: {result.get('message', 'Error desconocido')}",
+                    )
 
         descuento = Decimal(request.session.get("checkout_descuento", "0"))
 
@@ -494,6 +549,121 @@ class CheckoutPaymentView(View):
         }
 
         return render(request, "orders/checkout_payment.html", context)
+
+
+class StripeWebhookView(View):
+    """Endpoint to receive Stripe webhooks and mark orders as paid when appropriate."""
+
+    def post(self, request):
+        payload = request.body
+        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+        if not webhook_secret:
+            return HttpResponse("Webhook secret not configured", status=400)
+
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        except Exception:
+            return HttpResponse(status=400)
+
+        # Handle successful payment events
+        event_type = event.get("type")
+        data_obj = event.get("data", {}).get("object", {})
+
+        order_id = None
+        # metadata may be present on session or payment_intent
+        metadata = data_obj.get("metadata") or {}
+        order_id = metadata.get("order_id")
+
+        if not order_id and event_type == "checkout.session.completed":
+            # sometimes session object references payment_intent
+            order_id = metadata.get("order_id")
+
+        if order_id:
+            try:
+                order = Order.objects.get(id=int(order_id))
+                if not order.pagado:
+                    order.pagado = True
+                    order.save()
+                    # send confirmation email asynchronously if desired
+                    send_order_confirmation_email(order)
+            except Order.DoesNotExist:
+                pass
+
+        return JsonResponse({"received": True})
+
+
+class StripeReturnView(View):
+    """Handle user redirect from Stripe Checkout.
+
+    GET: If order is already paid -> redirect to existing success page.
+         Otherwise render a small validating page that reloads after 5s.
+
+    POST: Some gateways may POST back. If Stripe posts here, verify signature
+          using webhook secret and mark order paid, then redirect to success.
+    """
+
+    def get(self, request):
+        order = None
+        order_id = request.session.get("checkout_order_id")
+        if order_id:
+            try:
+                order = Order.objects.get(id=order_id)
+            except Order.DoesNotExist:
+                order = None
+
+        # fallback: allow codigo in querystring
+        codigo = request.GET.get("codigo")
+        if not order and codigo:
+            try:
+                order = Order.objects.get(codigo_pedido=codigo)
+            except Order.DoesNotExist:
+                order = None
+
+        if order and order.pagado:
+            return redirect("orders:order_success", codigo=order.codigo_pedido)
+
+        # Not yet paid: render validating page that reloads to this view
+        context = {"order": order}
+        return render(request, "orders/validating.html", context)
+
+    def post(self, request):
+        # Validate that the POST comes from Stripe using webhook secret
+        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        if not webhook_secret or not sig_header:
+            return HttpResponseForbidden("Missing or invalid signature")
+
+        payload = request.body
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        except Exception:
+            return HttpResponseForbidden("Invalid signature")
+
+        data_obj = event.get("data", {}).get("object", {})
+        metadata = data_obj.get("metadata") or {}
+        order_id = metadata.get("order_id")
+
+        if order_id:
+            try:
+                order = Order.objects.get(id=int(order_id))
+                if not order.pagado:
+                    order.pagado = True
+                    order.save()
+                    send_order_confirmation_email(order)
+                return redirect("orders:order_success", codigo=order.codigo_pedido)
+            except Order.DoesNotExist:
+                return HttpResponse(status=404)
+
+        return HttpResponse(status=400)
+
+
+class StripeCancelView(View):
+    """Display a simple cancellation page when Stripe cancel occurs."""
+
+    def get(self, request):
+        return render(request, "orders/payment_cancel.html")
 
     def _get_order(self, request):
         order_id = request.session.get("checkout_order_id")
