@@ -1,10 +1,10 @@
-import os
 import secrets
 import string
-from decimal import Decimal
-from time import time
-
+import os
 import stripe
+
+from decimal import Decimal
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -216,6 +216,36 @@ def process_payment(order, payment_method="tarjeta"):
     TODO: Integrate with Stripe API or other payment gateway for actual payment processing.
     For now, this is a mock function that always succeeds.
 
+    PAYMENT GATEWAY INTEGRATION REQUIREMENTS:
+    ========================================
+    When implementing a real payment gateway integration, ensure the following:
+
+    1. TIMEOUT REQUIREMENT:
+       - The payment gateway MUST enforce a timeout based on PAYMENT_WINDOW_MINUTES (default: 5 minutes)
+       - This timeout should be calculated from when the user reaches the payment step
+       - If payment exceeds this window, it should fail automatically
+
+    2. TRANSACTION HANDLING:
+       - All payment operations must be idempotent (safe to retry)
+       - Store transaction IDs for reconciliation and refunds
+       - Handle partial payments appropriately
+
+    3. ERROR HANDLING:
+       - Distinguish between:
+         * Timeout errors (return {"success": False, "error": "timeout"})
+         * Payment declined (return {"success": False, "error": "declined"})
+         * Network/technical errors (return {"success": False, "error": "technical"})
+       - Always return a dict with at minimum: {"success": bool}
+
+    4. SECURITY:
+       - Never log full credit card details
+       - Use PCI-compliant payment gateway (Stripe, PayPal, Redsys, etc.)
+       - Validate payment amount matches order.total before processing
+
+    5. CONTRAREMBOLSO (Cash on Delivery):
+       - No actual payment processing needed
+       - Simply return success with appropriate transaction ID
+
     Args:
         order: Order instance with order.total, order.codigo_pedido, order.email
         payment_method: Payment method ('tarjeta' or 'contrarembolso')
@@ -228,6 +258,7 @@ def process_payment(order, payment_method="tarjeta"):
         Optional keys for errors:
         - 'error' (str): Error type ('timeout', 'declined', 'technical')
     """
+    # For contrarembolso, no payment processing needed
     if payment_method == "contrarembolso":
         return {
             "success": True,
@@ -256,23 +287,41 @@ def process_payment(order, payment_method="tarjeta"):
 
     amount_cents = int(order.total * 100)
 
-    expires_at = int(time.time()) + 300  # 300 segundos = 5 minutos
+    # Nota: no todos los recursos/versions de la librería stripe aceptan
+    # el parámetro `expires_at` en PaymentIntent.create. Para evitar
+    # errores por atributos faltantes en la librería (que mostraban
+    # 'No exception message supplied'), creamos el intent sin
+    # `expires_at` y capturamos AttributeError para dar una respuesta
+    # más útil.
 
     try:
         intent = stripe.PaymentIntent.create(
             amount=amount_cents,
             currency="eur",
             payment_method_types=["card"],
-            payment_method="pm_card_visa",  # test card de Stripe
-            confirm=True,  # lo confirma directamente
+            payment_method="pm_card_visa",  # tarjeta de prueba de Stripe
+            confirm=True,
             description=f"Pedido {order.codigo_pedido}",
             metadata={
                 "order_id": str(order.id),
                 "codigo_pedido": order.codigo_pedido,
             },
             receipt_email=order.email if order.email else None,
-            expires_at=expires_at,  # Aquí estamos configurando el timeout
         )
+
+    except AttributeError as e:
+        # Raised when the stripe module doesn't expose the expected
+        # resource (e.g. PaymentIntent) due to version/mapping issues.
+        return {
+            "success": False,
+            "transaction_id": None,
+            "error": "technical",
+            "message": (
+                "Error de integración con la librería Stripe: recurso no encontrado. "
+                "Comprueba la versión de la librería (`pip show stripe`) y la configuración."
+            ),
+            "detail": str(e),
+        }
 
     except stripe.error.CardError as e:
         return {
@@ -281,6 +330,21 @@ def process_payment(order, payment_method="tarjeta"):
             "error": "declined",
             "message": f"Tu tarjeta ha sido rechazada: {e.user_message or 'Tarjeta no válida'}",
         }
+    except (ConnectionRefusedError, OSError) as e:
+        # Network-level error connecting to Stripe (connection refused,
+        # DNS, blocked port, etc.). Return a clear message so the front-end
+        # can inform the user and the developer can debug.
+        return {
+            "success": False,
+            "transaction_id": None,
+            "error": "network",
+            "message": (
+                "No se ha podido conectar con el servicio de pagos. Comprueba tu conexión a internet, "
+                "firewall/proxy, y que api.stripe.com es accesible desde este equipo."
+            ),
+            "detail": str(e),
+        }
+
     except stripe.error.StripeError:
         return {
             "success": False,
@@ -337,7 +401,6 @@ def cleanup_expired_orders():
           ]
     """
     from collections import defaultdict
-
     from orders.models import Order
 
     env_config = getEnvConfig()
@@ -372,16 +435,6 @@ def cleanup_expired_orders():
         tallas_list = [
             {"talla": talla, "cantidad": cantidad} for talla, cantidad in sorted(shoe_data["tallas"].items())
         ]
-        stock_details.append(
-            {
-                "zapato_id": zapato_id,
-                "zapato_nombre": shoe_data["nombre"],
-                "tallas": tallas_list,
-            }
-        )
+        stock_details.append({"zapato_id": zapato_id, "zapato_nombre": shoe_data["nombre"], "tallas": tallas_list})
 
-    return {
-        "deleted_count": deleted_count,
-        "restored_items": restored_items_count,
-        "stock_details": stock_details,
-    }
+    return {"deleted_count": deleted_count, "restored_items": restored_items_count, "stock_details": stock_details}

@@ -4,8 +4,12 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+import logging
+import smtplib
 
 from tienda_calzados_marilo.env import getEnvConfig
+
+logger = logging.getLogger(__name__)
 
 
 def get_tracking_url(order_code: str) -> str:
@@ -15,7 +19,7 @@ def get_tracking_url(order_code: str) -> str:
     return f"{base_url}/orders/{order_code}/"
 
 
-def send_order_confirmation_email(order) -> None:
+def send_order_confirmation_email(order) -> bool:
     """
     Send order confirmation email after successful payment.
 
@@ -45,14 +49,23 @@ def send_order_confirmation_email(order) -> None:
     if order.usuario and order.usuario.email and order.usuario.email != order.email:
         recipients.append(order.usuario.email)
 
-    send_mail(
-        subject=subject,
-        message=plain_message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=recipients,
-        html_message=html_message,
-        fail_silently=False,
-    )
+    try:
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=recipients,
+            html_message=html_message,
+            fail_silently=False,
+        )
+        return True
+    except (smtplib.SMTPException, ConnectionRefusedError, OSError) as e:
+        # Log the error and return False so callers can decide what to do.
+        logger.exception("Error sending order confirmation email for order %s: %s", order.codigo_pedido, e)
+        return False
+    except Exception as e:
+        logger.exception("Unexpected error sending order confirmation email for order %s: %s", order.codigo_pedido, e)
+        return False
 
 
 def send_order_status_update_email(order) -> None:

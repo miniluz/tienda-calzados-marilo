@@ -461,7 +461,14 @@ class CheckoutPaymentView(View):
                 order.pagado = True
                 order.save()
 
-                send_order_confirmation_email(order)
+                email_sent = send_order_confirmation_email(order)
+                if not email_sent:
+                    # Do not fail the checkout if email cannot be sent; warn the user.
+                    messages.warning(
+                        request,
+                        "El pedido se ha completado pero no se ha podido enviar el correo de confirmación. "
+                        "Comprueba la configuración de correo o inténtalo más tarde.",
+                    )
 
                 if "checkout_order_id" in request.session:
                     del request.session["checkout_order_id"]
