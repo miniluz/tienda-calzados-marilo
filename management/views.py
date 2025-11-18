@@ -60,28 +60,23 @@ class CustomerListView(View):
     def get(self, request):
         customers = Customer.objects.select_related("user").all()
 
-        # Initialize filter form with GET data
         filter_form = CustomerFilterForm(request.GET)
 
         if filter_form.is_valid():
-            # Filter by nombre (searches in first_name and last_name)
             nombre = filter_form.cleaned_data.get("nombre")
             if nombre:
                 customers = customers.filter(
                     Q(user__first_name__icontains=nombre) | Q(user__last_name__icontains=nombre)
                 )
 
-            # Filter by email
             email = filter_form.cleaned_data.get("email")
             if email:
                 customers = customers.filter(user__email__icontains=email)
 
-            # Filter by telefono (exact match)
             telefono = filter_form.cleaned_data.get("telefono")
             if telefono:
                 customers = customers.filter(phone_number__icontains=telefono)
 
-        # Always order by creation date (newest first)
         customers = customers.order_by("-created_at")
 
         return render(request, self.template_name, {"customers": customers, "filter_form": filter_form})
@@ -312,7 +307,6 @@ class ZapatoAdminListView(View):
     def get(self, request):
         zapatos = Zapato.objects.select_related("marca", "categoria").prefetch_related("tallas").all()
 
-        # Calculate total stock for each zapato
         for zapato in zapatos:
             zapato.total_stock = zapato.tallas.aggregate(total=Sum("stock"))["total"] or 0
 
@@ -329,7 +323,6 @@ class ZapatoAdminDetailView(View):
         zapato = get_object_or_404(Zapato, pk=zapato_id)
         form = ZapatoForm(instance=zapato)
 
-        # Calculate total stock
         total_stock = zapato.tallas.aggregate(total=Sum("stock"))["total"] or 0
 
         return render(
@@ -385,7 +378,6 @@ class ZapatoAdminCreateView(View):
                 with transaction.atomic():
                     zapato = form.save()
 
-                    # Create all sizes (34-49) with 0 stock by default
                     for talla in range(34, 50):
                         TallaZapato.objects.create(zapato=zapato, talla=talla, stock=0)
 
@@ -415,25 +407,21 @@ class ZapatoStockEditView(View):
 
         try:
             if action == "add":
-                # Add stock to a specific size
                 talla_id = request.POST.get("talla_id")
                 amount = int(request.POST.get("amount", 1))
                 talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
 
-                # Use F() expression to prevent race conditions
                 talla.stock = F("stock") + amount
                 talla.save()
-                talla.refresh_from_db()  # Reload to get actual value
+                talla.refresh_from_db()
 
                 messages.success(request, f"Se añadieron {amount} unidades a la talla {talla.talla}.")
 
             elif action == "remove":
-                # Remove stock from a specific size
                 talla_id = request.POST.get("talla_id")
                 amount = int(request.POST.get("amount", 1))
                 talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
 
-                # Ensure we don't go negative
                 if talla.stock >= amount:
                     talla.stock = F("stock") - amount
                     talla.save()
@@ -443,7 +431,6 @@ class ZapatoStockEditView(View):
                     messages.error(request, f"No hay suficiente stock. Stock actual: {talla.stock}")
 
             elif action == "delete":
-                # Delete a size
                 talla_id = request.POST.get("talla_id")
                 talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
                 talla_num = talla.talla
@@ -451,11 +438,9 @@ class ZapatoStockEditView(View):
                 messages.success(request, f"Talla {talla_num} eliminada correctamente.")
 
             elif action == "create":
-                # Create a new size
                 talla_num = int(request.POST.get("talla"))
                 stock_inicial = int(request.POST.get("stock_inicial", 0))
 
-                # Check if size already exists
                 if zapato.tallas.filter(talla=talla_num).exists():
                     messages.error(request, f"La talla {talla_num} ya existe para este zapato.")
                 else:
@@ -470,7 +455,6 @@ class ZapatoStockEditView(View):
         except Exception as e:
             messages.error(request, f"Ha ocurrido un error: {str(e)}")
 
-        # Redirect to avoid form resubmission
         return redirect("zapato_stock_edit", zapato_id=zapato.id)
 
 
@@ -573,7 +557,6 @@ class MarcaDeleteView(View):
     def post(self, request, marca_id):
         marca = get_object_or_404(Marca, pk=marca_id)
 
-        # Check if marca has associated zapatos
         if marca.zapatos.exists():
             messages.error(request, "No se puede eliminar la marca porque tiene zapatos asociados.")
             return redirect("marca_list")
@@ -665,7 +648,6 @@ class CategoriaDeleteView(View):
     def post(self, request, categoria_id):
         categoria = get_object_or_404(Categoria, pk=categoria_id)
 
-        # Categoria can be deleted even if it has zapatos (SET_NULL on delete)
         categoria_nombre = categoria.nombre
         categoria.delete()
         messages.success(request, f"Categoría {categoria_nombre} eliminada correctamente.")
@@ -686,16 +668,13 @@ class OrderManagementListView(View):
 
         orders = Order.objects.filter(pagado=True).select_related("usuario").order_by("-fecha_creacion")
 
-        # Initialize filter form with GET data
         filter_form = OrderFilterForm(request.GET, estado_choices=Order.ESTADO_CHOICES)
 
         if filter_form.is_valid():
-            # Filter by email
             email = filter_form.cleaned_data.get("email")
             if email:
                 orders = orders.filter(Q(usuario__email__icontains=email) | Q(email__icontains=email))
 
-            # Filter by name (searches in first_name, last_name, nombre, and apellido)
             nombre = filter_form.cleaned_data.get("nombre")
             if nombre:
                 orders = orders.filter(
@@ -705,7 +684,6 @@ class OrderManagementListView(View):
                     | Q(apellido__icontains=nombre)
                 )
 
-            # Filter by status
             estado = filter_form.cleaned_data.get("estado")
             if estado:
                 orders = orders.filter(estado=estado)
@@ -742,14 +720,12 @@ class OrderManagementDetailView(View):
 
         order = get_object_or_404(Order, codigo_pedido=codigo)
 
-        # Update order status
         new_status = request.POST.get("estado")
         if new_status and new_status in dict(Order.ESTADO_CHOICES):
             old_status = order.estado
             order.estado = new_status
             order.save()
 
-            # Send status update email if status changed
             if old_status != new_status:
                 send_order_status_update_email(order)
 
@@ -770,16 +746,13 @@ class CleanupExpiredOrdersView(View):
 
         result = cleanup_expired_orders()
 
-        # Build detailed message
         if result["deleted_count"] == 0:
             messages.info(request, "No hay pedidos expirados para limpiar.")
         else:
-            # Build HTML message with proper formatting
             message_html = f"""
                 <strong>Limpieza completada:</strong> {result['deleted_count']} pedido(s) eliminado(s).
             """
 
-            # Add stock details if any items were restored
             if result["stock_details"]:
                 message_html += """
                     <hr class="my-2">

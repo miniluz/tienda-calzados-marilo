@@ -172,7 +172,6 @@ class OrderLookupForm(forms.Form):
         codigo = self.cleaned_data.get("codigo_pedido")
         if not codigo:
             raise forms.ValidationError("El código de pedido es obligatorio.")
-        # Remove whitespace
         codigo = codigo.strip()
         if not codigo.isalnum():
             raise forms.ValidationError("El código de pedido debe ser alfanumérico (solo letras y números).")

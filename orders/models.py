@@ -19,7 +19,6 @@ class Order(models.Model):
         ("tarjeta", "Tarjeta"),
     ]
 
-    # Identificación del pedido
     codigo_pedido = models.CharField("Código de Pedido", max_length=20, unique=True, db_index=True)
     usuario = models.ForeignKey(
         User,
@@ -30,16 +29,13 @@ class Order(models.Model):
         verbose_name="Usuario",
     )
 
-    # Fechas
     fecha_creacion = models.DateTimeField("Fecha de Creación", auto_now_add=True)
     fecha_actualizacion = models.DateTimeField("Fecha de Actualización", auto_now=True)
 
-    # Estado y pago
     estado = models.CharField("Estado", max_length=20, choices=ESTADO_CHOICES, default="por_enviar")
     metodo_pago = models.CharField("Método de Pago", max_length=20, choices=METODO_PAGO_CHOICES)
     pagado = models.BooleanField("Pagado", default=False)
 
-    # Importes
     subtotal = models.DecimalField("Subtotal", max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     impuestos = models.DecimalField("Impuestos", max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     coste_entrega = models.DecimalField(
@@ -50,18 +46,15 @@ class Order(models.Model):
     )
     total = models.DecimalField("Total", max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
 
-    # Información de contacto
     nombre = models.CharField("Nombre", max_length=100, blank=False)
     apellido = models.CharField("Apellido", max_length=100, blank=False)
     email = models.EmailField("Correo Electrónico", blank=False)
     telefono = models.CharField("Teléfono", max_length=15, blank=False)
 
-    # Dirección de envío
     direccion_envio = models.TextField("Dirección de Envío", blank=False)
     ciudad_envio = models.CharField("Ciudad de Envío", max_length=100, blank=False)
     codigo_postal_envio = models.CharField("Código Postal de Envío", max_length=10, blank=False)
 
-    # Dirección de facturación
     direccion_facturacion = models.TextField("Dirección de Facturación", blank=False)
     ciudad_facturacion = models.CharField("Ciudad de Facturación", max_length=100, blank=False)
     codigo_postal_facturacion = models.CharField("Código Postal de Facturación", max_length=10, blank=False)

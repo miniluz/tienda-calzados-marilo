@@ -215,7 +215,6 @@ class ZapatoManagementTests(TestCase):
             categoria=self.categoria,
         )
 
-        # Add some sizes
         TallaZapato.objects.create(zapato=self.zapato, talla=40, stock=10)
         TallaZapato.objects.create(zapato=self.zapato, talla=42, stock=5)
 
@@ -233,7 +232,6 @@ class ZapatoManagementTests(TestCase):
         self.client.login(username="admin@example.com", password="AdminPass123!")
         response = self.client.get(reverse("zapato_admin_list"))
         self.assertEqual(response.status_code, 200)
-        # Should show total stock (10 + 5 = 15)
         self.assertIn("zapatos", response.context)
 
     def test_staff_can_view_zapato_detail(self):
@@ -285,9 +283,8 @@ class ZapatoManagementTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Zapato.objects.count(), initial_count + 1)
 
-        # Check that sizes were auto-created (34-49)
         new_zapato = Zapato.objects.get(nombre="New Zapato")
-        self.assertEqual(new_zapato.tallas.count(), 16)  # 34 to 49 inclusive
+        self.assertEqual(new_zapato.tallas.count(), 16)
 
     def test_staff_can_delete_zapato(self):
         self.client.login(username="admin@example.com", password="AdminPass123!")
@@ -345,7 +342,6 @@ class ZapatoManagementTests(TestCase):
         talla = self.zapato.tallas.get(talla=40)
         original_stock = talla.stock
 
-        # Try to remove more than available
         response = self.client.post(
             reverse("zapato_stock_edit", args=[self.zapato.id]),
             {"action": "remove", "talla_id": talla.id, "amount": 999},
@@ -353,7 +349,6 @@ class ZapatoManagementTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         talla.refresh_from_db()
-        # Stock should remain unchanged
         self.assertEqual(talla.stock, original_stock)
 
     def test_stock_edit_create_talla(self):
@@ -448,13 +443,11 @@ class MarcaManagementTests(TestCase):
 
         from catalog.models import Marca, Zapato
 
-        # Create a zapato with this marca
         Zapato.objects.create(nombre="Test Zapato", marca=self.marca, precio=100, genero="Unisex")
 
         marca_id = self.marca.id
         response = self.client.post(reverse("marca_delete", args=[marca_id]))
 
-        # Should redirect back and marca should still exist
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Marca.objects.filter(pk=marca_id).exists())
 
@@ -525,7 +518,6 @@ class CategoriaManagementTests(TestCase):
 
         from catalog.models import Marca, Zapato, Categoria
 
-        # Create a zapato with this categoria
         marca = Marca.objects.create(nombre="Test Marca")
         zapato = Zapato.objects.create(
             nombre="Test Zapato", marca=marca, precio=100, genero="Unisex", categoria=self.categoria
@@ -534,7 +526,6 @@ class CategoriaManagementTests(TestCase):
         categoria_id = self.categoria.id
         response = self.client.post(reverse("categoria_delete", args=[categoria_id]))
 
-        # Should successfully delete and zapato.categoria should be NULL
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Categoria.objects.filter(pk=categoria_id).exists())
 

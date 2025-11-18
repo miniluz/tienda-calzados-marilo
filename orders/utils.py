@@ -1,11 +1,10 @@
+import os
 import secrets
 import string
-import os
-import stripe
-
 from decimal import Decimal
 from time import time
 
+import stripe
 from django.db import transaction
 from django.utils import timezone
 
@@ -217,36 +216,6 @@ def process_payment(order, payment_method="tarjeta"):
     TODO: Integrate with Stripe API or other payment gateway for actual payment processing.
     For now, this is a mock function that always succeeds.
 
-    PAYMENT GATEWAY INTEGRATION REQUIREMENTS:
-    ========================================
-    When implementing a real payment gateway integration, ensure the following:
-
-    1. TIMEOUT REQUIREMENT:
-       - The payment gateway MUST enforce a timeout based on PAYMENT_WINDOW_MINUTES (default: 5 minutes)
-       - This timeout should be calculated from when the user reaches the payment step
-       - If payment exceeds this window, it should fail automatically
-
-    2. TRANSACTION HANDLING:
-       - All payment operations must be idempotent (safe to retry)
-       - Store transaction IDs for reconciliation and refunds
-       - Handle partial payments appropriately
-
-    3. ERROR HANDLING:
-       - Distinguish between:
-         * Timeout errors (return {"success": False, "error": "timeout"})
-         * Payment declined (return {"success": False, "error": "declined"})
-         * Network/technical errors (return {"success": False, "error": "technical"})
-       - Always return a dict with at minimum: {"success": bool}
-
-    4. SECURITY:
-       - Never log full credit card details
-       - Use PCI-compliant payment gateway (Stripe, PayPal, Redsys, etc.)
-       - Validate payment amount matches order.total before processing
-
-    5. CONTRAREMBOLSO (Cash on Delivery):
-       - No actual payment processing needed
-       - Simply return success with appropriate transaction ID
-
     Args:
         order: Order instance with order.total, order.codigo_pedido, order.email
         payment_method: Payment method ('tarjeta' or 'contrarembolso')
@@ -259,7 +228,6 @@ def process_payment(order, payment_method="tarjeta"):
         Optional keys for errors:
         - 'error' (str): Error type ('timeout', 'declined', 'technical')
     """
-    # For contrarembolso, no payment processing needed
     if payment_method == "contrarembolso":
         return {
             "success": True,
@@ -369,6 +337,7 @@ def cleanup_expired_orders():
           ]
     """
     from collections import defaultdict
+
     from orders.models import Order
 
     env_config = getEnvConfig()
@@ -403,6 +372,16 @@ def cleanup_expired_orders():
         tallas_list = [
             {"talla": talla, "cantidad": cantidad} for talla, cantidad in sorted(shoe_data["tallas"].items())
         ]
-        stock_details.append({"zapato_id": zapato_id, "zapato_nombre": shoe_data["nombre"], "tallas": tallas_list})
+        stock_details.append(
+            {
+                "zapato_id": zapato_id,
+                "zapato_nombre": shoe_data["nombre"],
+                "tallas": tallas_list,
+            }
+        )
 
-    return {"deleted_count": deleted_count, "restored_items": restored_items_count, "stock_details": stock_details}
+    return {
+        "deleted_count": deleted_count,
+        "restored_items": restored_items_count,
+        "stock_details": stock_details,
+    }

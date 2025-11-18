@@ -32,7 +32,6 @@ class CheckoutStartView(View):
 
     def get(self, request):
         # TODO: Get cart items from actual cart implementation
-        # For now, use mock data with 2 available shoes
         zapatos = Zapato.objects.filter(estaDisponible=True)[:2]
 
         if not zapatos.exists():
@@ -61,21 +60,16 @@ class CheckoutStartView(View):
             )
             return redirect("catalog:zapato_list")
 
-        # Calculate prices
         prices = calculate_order_prices(cart_items)
 
-        # Create order with pagado=False
-        # Generate unique order code with retry logic to handle race conditions
         max_retries = 5
         order = None
         for attempt in range(max_retries):
             codigo_pedido = generate_order_code()
             try:
                 with transaction.atomic():
-                    # Reserve stock first
                     reserve_stock(cart_items)
 
-                    # Create order - if codigo_pedido exists, IntegrityError will be raised
                     order = Order.objects.create(
                         codigo_pedido=codigo_pedido,
                         usuario=request.user if request.user.is_authenticated else None,
@@ -83,9 +77,8 @@ class CheckoutStartView(View):
                         impuestos=prices["impuestos"],
                         coste_entrega=prices["coste_entrega"],
                         total=prices["total"],
-                        metodo_pago="tarjeta",  # Will be updated later
+                        metodo_pago="tarjeta",
                         pagado=False,
-                        # Temporary values, will be filled in during checkout
                         nombre="",
                         apellido="",
                         email="",
@@ -97,14 +90,12 @@ class CheckoutStartView(View):
                         ciudad_facturacion="",
                         codigo_postal_facturacion="",
                     )
-                    break  # Success, exit retry loop
+                    break
             except IntegrityError:
-                # Order code collision, retry with new code
                 if attempt == max_retries - 1:
                     raise ValueError("No se pudo generar un código de pedido único. Por favor, inténtalo de nuevo.")
                 continue
             except ValueError as e:
-                # Stock reservation error
                 messages.error(request, str(e))
                 return redirect("catalog:zapato_list")
 
@@ -112,7 +103,6 @@ class CheckoutStartView(View):
             raise ValueError("Error al crear el pedido.")
 
         try:
-            # Create order items
             for item in cart_items:
                 zapato = item["zapato"]
                 precio_unitario = (
@@ -120,7 +110,6 @@ class CheckoutStartView(View):
                 )
                 cantidad = item["cantidad"]
 
-                # Calculate discount if there's an offer price
                 descuento = Decimal("0.00")
                 if zapato.precioOferta:
                     precio_original = Decimal(str(zapato.precio))
@@ -136,7 +125,6 @@ class CheckoutStartView(View):
                     descuento=descuento,
                 )
 
-            # Store order ID in session
             request.session["checkout_order_id"] = order.id
             request.session["checkout_descuento"] = str(prices["descuento"])
 
@@ -169,7 +157,6 @@ class CheckoutContactView(View):
             )
             return redirect("orders:checkout_start")
 
-        # Pre-populate with user data if logged in
         initial = {}
         if request.user.is_authenticated:
             initial = {
@@ -206,7 +193,6 @@ class CheckoutContactView(View):
         form = ContactInfoForm(request.POST)
 
         if form.is_valid():
-            # Update order with contact info
             order.nombre = form.cleaned_data["nombre"]
             order.apellido = form.cleaned_data["apellido"]
             order.email = form.cleaned_data["email"]
@@ -231,10 +217,8 @@ class CheckoutContactView(View):
         try:
             order = Order.objects.get(id=order_id, pagado=False)
 
-            # Ownership validation: authenticated users can only access their own orders
             if request.user.is_authenticated and order.usuario is not None:
                 if order.usuario != request.user:
-                    # User trying to access someone else's order
                     return None
 
             return order
@@ -256,7 +240,6 @@ class CheckoutShippingView(View):
             )
             return redirect("orders:checkout_start")
 
-        # Pre-populate with user data if logged in
         initial = {}
         if request.user.is_authenticated and hasattr(request.user, "customer"):
             customer = request.user.customer
@@ -292,7 +275,6 @@ class CheckoutShippingView(View):
         form = ShippingAddressForm(request.POST)
 
         if form.is_valid():
-            # Update order with shipping address
             order.direccion_envio = form.cleaned_data["direccion_envio"]
             order.ciudad_envio = form.cleaned_data["ciudad_envio"]
             order.codigo_postal_envio = form.cleaned_data["codigo_postal_envio"]
@@ -316,10 +298,8 @@ class CheckoutShippingView(View):
         try:
             order = Order.objects.get(id=order_id, pagado=False)
 
-            # Ownership validation: authenticated users can only access their own orders
             if request.user.is_authenticated and order.usuario is not None:
                 if order.usuario != request.user:
-                    # User trying to access someone else's order
                     return None
 
             return order
@@ -341,7 +321,6 @@ class CheckoutBillingView(View):
             )
             return redirect("orders:checkout_start")
 
-        # Pre-populate with user data if available
         initial = {}
         if request.user.is_authenticated and hasattr(request.user, "customer"):
             customer = request.user.customer
@@ -377,7 +356,6 @@ class CheckoutBillingView(View):
         form = BillingAddressForm(request.POST)
 
         if form.is_valid():
-            # Update order with billing address
             order.direccion_facturacion = form.cleaned_data["direccion_facturacion"]
             order.ciudad_facturacion = form.cleaned_data["ciudad_facturacion"]
             order.codigo_postal_facturacion = form.cleaned_data["codigo_postal_facturacion"]
@@ -401,10 +379,8 @@ class CheckoutBillingView(View):
         try:
             order = Order.objects.get(id=order_id, pagado=False)
 
-            # Ownership validation: authenticated users can only access their own orders
             if request.user.is_authenticated and order.usuario is not None:
                 if order.usuario != request.user:
-                    # User trying to access someone else's order
                     return None
 
             return order
@@ -426,7 +402,6 @@ class CheckoutPaymentView(View):
             )
             return redirect("orders:checkout_start")
 
-        # Check if checkout form window has expired (10 minutes)
         env_config = getEnvConfig()
         order_age = timezone.now() - order.fecha_creacion
         if order_age.total_seconds() / 60 > env_config.CHECKOUT_FORM_WINDOW_MINUTES:
@@ -439,7 +414,6 @@ class CheckoutPaymentView(View):
 
         form = PaymentMethodForm()
 
-        # Get discount from session
         descuento = Decimal(request.session.get("checkout_descuento", "0"))
 
         context = {
@@ -463,7 +437,6 @@ class CheckoutPaymentView(View):
             )
             return redirect("orders:checkout_start")
 
-        # Check if total window (checkout + payment) has expired (15 minutes)
         env_config = getEnvConfig()
         order_age = timezone.now() - order.fecha_creacion
         total_window = env_config.CHECKOUT_FORM_WINDOW_MINUTES + env_config.PAYMENT_WINDOW_MINUTES
@@ -482,18 +455,14 @@ class CheckoutPaymentView(View):
             order.metodo_pago = metodo_pago
             order.save()
 
-            # Process payment
             result = process_payment(order, metodo_pago)
 
             if result["success"]:
-                # Mark as paid
                 order.pagado = True
                 order.save()
 
-                # Send confirmation email
                 send_order_confirmation_email(order)
 
-                # Clear session
                 if "checkout_order_id" in request.session:
                     del request.session["checkout_order_id"]
                 if "checkout_descuento" in request.session:
@@ -507,7 +476,6 @@ class CheckoutPaymentView(View):
                     f"Error al procesar el pago: {result.get('message', 'Error desconocido')}",
                 )
 
-        # Get discount from session
         descuento = Decimal(request.session.get("checkout_descuento", "0"))
 
         context = {
@@ -527,10 +495,8 @@ class CheckoutPaymentView(View):
         try:
             order = Order.objects.get(id=order_id, pagado=False)
 
-            # Ownership validation: authenticated users can only access their own orders
             if request.user.is_authenticated and order.usuario is not None:
                 if order.usuario != request.user:
-                    # User trying to access someone else's order
                     return None
 
             return order
@@ -571,9 +537,6 @@ class OrderDetailView(View):
     def get(self, request, codigo):
         order = get_object_or_404(Order, codigo_pedido=codigo)
 
-        # Anyone with the order code can view the order
-        # This allows customers to track orders via email links
-
         context = {
             "order": order,
         }
@@ -597,20 +560,16 @@ class OrderLookupView(View):
         if form.is_valid():
             codigo = form.cleaned_data["codigo_pedido"]
 
-            # Try to get the order
             try:
                 Order.objects.get(codigo_pedido=codigo)
-                # Anyone with the code can view the order
                 return redirect("orders:order_detail", codigo=codigo)
             except Order.DoesNotExist:
-                # Order doesn't exist - show error
                 messages.error(
                     request,
                     "No se encontró ningún pedido con ese código. Por favor, verifica el código e inténtalo de nuevo.",
                 )
                 return render(request, "orders/order_lookup.html", {"form": form})
 
-        # Form is invalid - render with errors
         context = {
             "form": form,
         }

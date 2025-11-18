@@ -26,7 +26,6 @@ def send_order_confirmation_email(order) -> None:
     env_config = getEnvConfig()
     tracking_url = get_tracking_url(order.codigo_pedido)
 
-    # Render email content
     context = {
         "order": order,
         "tracking_url": tracking_url,
@@ -41,14 +40,11 @@ def send_order_confirmation_email(order) -> None:
 
     subject = f"Confirmación de Pedido #{order.codigo_pedido} - Calzados Marilo"
 
-    # Collect recipient emails
-    recipients = [order.email]  # Always send to contact email
+    recipients = [order.email]
 
-    # If user is authenticated and has a different email, send there too
     if order.usuario and order.usuario.email and order.usuario.email != order.email:
         recipients.append(order.usuario.email)
 
-    # Send email
     send_mail(
         subject=subject,
         message=plain_message,
@@ -67,7 +63,6 @@ def send_order_status_update_email(order) -> None:
     """
     tracking_url = get_tracking_url(order.codigo_pedido)
 
-    # Render email content
     context = {
         "order": order,
         "tracking_url": tracking_url,
@@ -81,7 +76,6 @@ def send_order_status_update_email(order) -> None:
 
     subject = f"Actualización de Pedido #{order.codigo_pedido} - Calzados Marilo"
 
-    # Send only to contact email
     send_mail(
         subject=subject,
         message=plain_message,
