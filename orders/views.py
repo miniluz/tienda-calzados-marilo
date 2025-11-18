@@ -499,7 +499,11 @@ class CheckoutPaymentView(View):
                             ],
                             mode="payment",
                             metadata={"order_id": str(order.id), "codigo_pedido": order.codigo_pedido},
-                            success_url=request.build_absolute_uri(reverse("orders:stripe_return")),
+                            # Include the Checkout Session id so we can retrieve status on user return
+                            success_url=(
+                                request.build_absolute_uri(reverse("orders:stripe_return"))
+                                + "?session_id={CHECKOUT_SESSION_ID}"
+                            ),
                             cancel_url=request.build_absolute_uri(reverse("orders:stripe_cancel")),
                         )
 
@@ -620,6 +624,51 @@ class StripeReturnView(View):
                 order = Order.objects.get(codigo_pedido=codigo)
             except Order.DoesNotExist:
                 order = None
+
+        # If we have a session id from Stripe, check Stripe directly to avoid loop
+        session_id = request.GET.get("session_id")
+        stripe_secret = os.getenv("STRIPE_SECRET_KEY")
+        if session_id and stripe_secret:
+            try:
+                stripe.api_key = stripe_secret
+                checkout_session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent"])
+                # retrieve metadata that we set when creating the session
+                metadata = checkout_session.get("metadata") or {}
+                # payment_status can be 'paid' when succeeded
+                payment_status = checkout_session.get("payment_status")
+
+                # try to find order from metadata if not available from session
+                if not order:
+                    order_id_meta = metadata.get("order_id")
+                    if order_id_meta:
+                        try:
+                            order = Order.objects.get(id=int(order_id_meta))
+                        except Order.DoesNotExist:
+                            order = None
+
+                # If Stripe reports the session as paid, mark the order paid and redirect to success
+                if payment_status == "paid":
+                    if order and not order.pagado:
+                        order.pagado = True
+                        order.save()
+                        send_order_confirmation_email(order)
+                        # clear the checkout session markers
+                        if "checkout_order_id" in request.session:
+                            try:
+                                del request.session["checkout_order_id"]
+                            except KeyError:
+                                pass
+                        if "checkout_descuento" in request.session:
+                            try:
+                                del request.session["checkout_descuento"]
+                            except KeyError:
+                                pass
+                    if order:
+                        return redirect("orders:order_success", codigo=order.codigo_pedido)
+
+            except Exception:
+                # If Stripe API call fails, fall back to existing logic (render validating)
+                pass
 
         if order and order.pagado:
             return redirect("orders:order_success", codigo=order.codigo_pedido)
