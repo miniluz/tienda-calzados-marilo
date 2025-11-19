@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "customer",
     "accounts",
     "management",
+    "orders",
 ]
 
 MIDDLEWARE = [
@@ -153,3 +154,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "home"
 LOGIN_URL = "login"
+
+# Email settings
+if envConfig.USE_CONSOLE_MAIL:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = envConfig.EMAIL_HOST
+    EMAIL_PORT = envConfig.EMAIL_PORT
+    EMAIL_HOST_USER = envConfig.EMAIL_HOST_USER
+    EMAIL_HOST_PASSWORD = envConfig.EMAIL_HOST_PASSWORD
+    EMAIL_USE_TLS = envConfig.EMAIL_USE_TLS
+    EMAIL_USE_SSL = envConfig.EMAIL_USE_SSL
+
+DEFAULT_FROM_EMAIL = "Calzados Marilo <noreply@calzmarilo.es>"

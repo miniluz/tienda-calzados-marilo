@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Pedido {{ order.codigo_pedido }} - Tienda Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Pedido {{ order.codigo_pedido }}</h1>
+                <span class="badge 
+                    {% if order.estado == 'recibido' %}bg-success
+                    {% elif order.estado == 'en_envio' %}bg-primary
+                    {% else %}bg-warning{% endif %} fs-6">
+                    {{ order.get_estado_display }}
+                </span>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-box"></i> Artículos del Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Talla</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                <tr>
+                                    <td>{{ item.zapato.nombre }}</td>
+                                    <td>{{ item.talla }}</td>
+                                    <td>{{ item.cantidad }}</td>
+                                    <td>€{{ item.precio_unitario }}</td>
+                                    <td>€{{ item.total }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-truck"></i> Información de Envío</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1"><strong>{{ order.nombre }} {{ order.apellido }}</strong></p>
+                            <p class="mb-1">{{ order.direccion_envio }}</p>
+                            <p class="mb-1">{{ order.ciudad_envio }}, {{ order.codigo_postal_envio }}</p>
+                            <hr>
+                            <p class="mb-1"><i class="bi bi-envelope"></i> {{ order.email }}</p>
+                            <p class="mb-0"><i class="bi bi-telephone"></i> {{ order.telefono }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-receipt"></i> Información de Facturación</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1">{{ order.direccion_facturacion }}</p>
+                            <p class="mb-1">{{ order.ciudad_facturacion }}, {{ order.codigo_postal_facturacion }}</p>
+                            <hr>
+                            <p class="mb-0">
+                                <strong>Método de Pago:</strong> {{ order.get_metodo_pago_display }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Resumen</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span>€{{ order.subtotal }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Envío:</span>
+                        <span>€{{ order.coste_entrega }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>IVA:</span>
+                        <span>€{{ order.impuestos }}</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <strong>Total:</strong>
+                        <strong>€{{ order.total }}</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Información del Pedido</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>Código:</strong><br>
+                        {{ order.codigo_pedido }}
+                    </p>
+                    <p class="mb-2">
+                        <strong>Fecha:</strong><br>
+                        {{ order.fecha_creacion|date:"d/m/Y H:i" }}
+                    </p>
+                    <p class="mb-0">
+                        <strong>Estado:</strong><br>
+                        {{ order.get_estado_display }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{% url 'orders:order_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Mis Pedidos
+        </a>
+    </div>
+</div>
+{% endblock %}
