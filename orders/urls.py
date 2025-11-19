@@ -13,6 +13,12 @@ urlpatterns = [
         name="checkout_contact",
     ),
     path(
+        "checkout/address/",
+        views.CheckoutAddressView.as_view(),
+        name="checkout_address",
+    ),
+    # Legacy URLs for backward compatibility (kept for reference)
+    path(
         "checkout/shipping/",
         views.CheckoutShippingView.as_view(),
         name="checkout_shipping",

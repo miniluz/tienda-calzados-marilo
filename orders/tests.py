@@ -1,5 +1,5 @@
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.core import mail
 from django.test import TestCase
@@ -204,12 +204,21 @@ class PaymentProcessingTest(TestCase):
             codigo_postal_facturacion="12345",
         )
 
-    def test_payment_tarjeta(self):
+    @patch.dict("os.environ", {"STRIPE_SECRET_KEY": "sk_test_mock_key"})
+    @patch("orders.utils.stripe.PaymentIntent.create")
+    def test_payment_tarjeta(self, mock_stripe_create):
         """Mock payment with tarjeta should succeed"""
+        # Mock successful Stripe response
+        mock_intent = Mock()
+        mock_intent.id = "pi_test_123456789"
+        mock_intent.status = "succeeded"
+        mock_stripe_create.return_value = mock_intent
+
         result = process_payment(self.order, "tarjeta")
 
         self.assertTrue(result["success"])
         self.assertIn("transaction_id", result)
+        self.assertEqual(result["transaction_id"], "pi_test_123456789")
 
     def test_payment_contrarembolso(self):
         """Payment with contrarembolso should succeed"""
