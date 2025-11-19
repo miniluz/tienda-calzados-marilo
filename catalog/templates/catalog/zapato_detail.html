@@ -377,6 +377,46 @@
                 form.submit();
             });
         }
+
+        // Buy now functionality
+        if (buyNowBtn) {
+            buyNowBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Get selected size
+                const selectedSize = document.querySelector('.sizes input[type="radio"]:checked');
+
+                if (!selectedSize) {
+                    alert('Por favor, selecciona una talla antes de comprar');
+                    sizeNotice.style.display = 'flex';
+                    return;
+                }
+
+                // Get CSRF token
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+
+                // Create form and submit to buy-now endpoint
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `{% url 'catalog:buy_now' zapato.id %}`;
+
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrftoken;
+
+                const tallaInput = document.createElement('input');
+                tallaInput.type = 'hidden';
+                tallaInput.name = 'talla';
+                tallaInput.value = selectedSize.value;
+
+                form.appendChild(csrfInput);
+                form.appendChild(tallaInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            });
+        }
     });
 
     // Helper function to get CSRF token from cookies

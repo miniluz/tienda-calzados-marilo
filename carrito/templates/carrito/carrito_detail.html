@@ -139,7 +139,10 @@
                 <h5>Total</h5>
                 <h5><strong>{{ total|floatformat:2 }} €</strong></h5>
             </div>
-            <button class="btn btn-primary btn-lg w-100">Proceder al Pago</button>
+            <form action="{% url 'carrito:checkout_from_carrito' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-lg w-100">Proceder al Pago</button>
+            </form>
         </div>
     {% else %}
         <div class="empty-cart">
