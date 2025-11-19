@@ -850,6 +850,60 @@ class OrderFilteringTests(TestCase):
         orders = response.context["orders"]
         self.assertEqual(len(orders), 1)
 
+    def test_order_filter_by_codigo_pedido_exact(self):
+        """Test filtering orders by exact order code"""
+        response = self.client.get(reverse("order_management_list"), {"codigo_pedido": "ORDER001"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER001")
+
+    def test_order_filter_by_codigo_pedido_partial(self):
+        """Test filtering orders by partial order code"""
+        response = self.client.get(reverse("order_management_list"), {"codigo_pedido": "ORDER"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 3)  # Should match all three orders
+
+        response = self.client.get(reverse("order_management_list"), {"codigo_pedido": "001"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER001")
+
+    def test_order_filter_by_codigo_pedido_case_insensitive(self):
+        """Test that order code filtering is case insensitive"""
+        response = self.client.get(reverse("order_management_list"), {"codigo_pedido": "order002"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER002")
+
+    def test_order_filter_by_codigo_pedido_combined(self):
+        """Test filtering orders by order code combined with other filters"""
+        response = self.client.get(
+            reverse("order_management_list"), {"codigo_pedido": "ORDER001", "estado": "por_enviar"}
+        )
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0].codigo_pedido, "ORDER001")
+
+        # Test with conflicting filters
+        response = self.client.get(
+            reverse("order_management_list"), {"codigo_pedido": "ORDER001", "estado": "en_envio"}
+        )
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 0)  # ORDER001 is not in "en_envio" status
+
+    def test_order_filter_by_codigo_pedido_no_match(self):
+        """Test filtering orders by non-existent order code"""
+        response = self.client.get(reverse("order_management_list"), {"codigo_pedido": "NONEXISTENT"})
+        self.assertEqual(response.status_code, 200)
+        orders = response.context["orders"]
+        self.assertEqual(len(orders), 0)
+
     def test_order_list_shows_all_without_filter(self):
         """Test that order list shows all orders when no filter is applied"""
         response = self.client.get(reverse("order_management_list"))

@@ -15,7 +15,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <form method="get" class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     {{ filter_form.email.label_tag }}
                     {{ filter_form.email }}
                 </div>
@@ -23,7 +23,11 @@
                     {{ filter_form.nombre.label_tag }}
                     {{ filter_form.nombre }}
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    {{ filter_form.codigo_pedido.label_tag }}
+                    {{ filter_form.codigo_pedido }}
+                </div>
+                <div class="col-md-2">
                     {{ filter_form.estado.label_tag }}
                     {{ filter_form.estado }}
                 </div>

@@ -297,6 +297,16 @@ class OrderFilterForm(forms.Form):
             }
         ),
     )
+    codigo_pedido = forms.CharField(
+        required=False,
+        label="Código de pedido",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Buscar por código de pedido...",
+            }
+        ),
+    )
     estado = forms.ChoiceField(
         required=False,
         label="Estado",
