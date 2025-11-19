@@ -675,6 +675,10 @@ class OrderManagementListView(View):
             if email:
                 orders = orders.filter(Q(usuario__email__icontains=email) | Q(email__icontains=email))
 
+            codigo_pedido = filter_form.cleaned_data.get("codigo_pedido")
+            if codigo_pedido:
+                orders = orders.filter(codigo_pedido__icontains=codigo_pedido)
+
             nombre = filter_form.cleaned_data.get("nombre")
             if nombre:
                 orders = orders.filter(
