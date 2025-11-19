@@ -12,6 +12,9 @@ from django.core.files import File
 
 from catalog.models import Categoria, Marca, TallaZapato, Zapato
 
+# Seeder priority (lower = runs first)
+PRIORITY = 10
+
 
 def seed():
     """Main seeding function for the catalog app"""
@@ -19,8 +22,13 @@ def seed():
     # Set random seed for reproducibility
     random.seed(42)
 
-    # Clear existing data
     print("  Clearing existing catalog data...")
+
+    from orders.models import Order, OrderItem
+
+    OrderItem.objects.all().delete()
+    Order.objects.all().delete()
+
     TallaZapato.objects.all().delete()
     Zapato.objects.all().delete()
     Marca.objects.all().delete()

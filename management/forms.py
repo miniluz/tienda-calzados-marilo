@@ -272,3 +272,53 @@ class CustomerFilterForm(forms.Form):
             }
         ),
     )
+
+
+class OrderFilterForm(forms.Form):
+    """Form for filtering orders in management interface"""
+
+    email = forms.CharField(
+        required=False,
+        label="Correo electrónico",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Buscar por email del usuario...",
+            }
+        ),
+    )
+    nombre = forms.CharField(
+        required=False,
+        label="Nombre o apellidos",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Buscar por nombre o apellidos...",
+            }
+        ),
+    )
+    codigo_pedido = forms.CharField(
+        required=False,
+        label="Código de pedido",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Buscar por código de pedido...",
+            }
+        ),
+    )
+    estado = forms.ChoiceField(
+        required=False,
+        label="Estado",
+        choices=[("", "Todos")] + [],  # Choices will be set dynamically
+        widget=forms.Select(
+            attrs={
+                "class": "form-select",
+            }
+        ),
+    )
+
+    def __init__(self, *args, estado_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if estado_choices:
+            self.fields["estado"].choices = [("", "Todos")] + list(estado_choices)

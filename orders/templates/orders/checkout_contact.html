@@ -1,0 +1,67 @@
+{% extends "orders/checkout_base.html" %}
+
+{% block checkout_content %}
+<form method="post">
+    {% csrf_token %}
+    
+    {% if user_data %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        Hemos rellenado el formulario con tus datos guardados.
+        <button type="button" class="btn btn-sm btn-outline-primary" id="restoreDefaults">
+            <i class="bi bi-person"></i> Restaurar los datos de mi perfil
+        </button>
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+        {{ form.nombre.label_tag }}
+        {{ form.nombre }}
+        {% if form.nombre.errors %}
+            <div class="text-danger">{{ form.nombre.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="mb-3">
+        {{ form.apellido.label_tag }}
+        {{ form.apellido }}
+        {% if form.apellido.errors %}
+            <div class="text-danger">{{ form.apellido.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="mb-3">
+        {{ form.email.label_tag }}
+        {{ form.email }}
+        {% if form.email.errors %}
+            <div class="text-danger">{{ form.email.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="mb-3">
+        {{ form.telefono.label_tag }}
+        {{ form.telefono }}
+        {% if form.telefono.errors %}
+            <div class="text-danger">{{ form.telefono.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary btn-lg">
+            Continuar a Direcciones
+            <i class="bi bi-arrow-right"></i>
+        </button>
+    </div>
+</form>
+
+{% if user_data %}
+<script>
+document.getElementById('restoreDefaults').addEventListener('click', function() {
+    {% if user_data.nombre %}document.getElementById('id_nombre').value = '{{ user_data.nombre }}';{% endif %}
+    {% if user_data.apellido %}document.getElementById('id_apellido').value = '{{ user_data.apellido }}';{% endif %}
+    {% if user_data.email %}document.getElementById('id_email').value = '{{ user_data.email }}';{% endif %}
+    {% if user_data.telefono %}document.getElementById('id_telefono').value = '{{ user_data.telefono }}';{% endif %}
+});
+</script>
+{% endif %}
+{% endblock %}

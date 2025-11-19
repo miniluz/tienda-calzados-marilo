@@ -1,0 +1,82 @@
+{% extends "orders/emails/base_email.html" %}
+
+{% block title %}Confirmación de Pedido - Calzados Marilo{% endblock %}
+
+{% block content %}
+<h2>¡Gracias por tu compra!</h2>
+
+<p>Hola {{ order.nombre }},</p>
+
+<p>Hemos recibido tu pedido correctamente. A continuación encontrarás los detalles de tu compra:</p>
+
+<div class="order-code">
+    <strong>Código de pedido:</strong> {{ order.codigo_pedido }}
+</div>
+
+<p>Puedes hacer seguimiento de tu pedido en cualquier momento utilizando el código anterior o haciendo clic en el siguiente botón:</p>
+
+<a href="{{ tracking_url }}" class="button">Ver Estado del Pedido</a>
+
+<div class="divider"></div>
+
+<h3 style="color: #1a1a4d; margin-bottom: 15px;">Detalles del Pedido</h3>
+
+<div class="order-details">
+    <table>
+        <tr>
+            <td class="label">Método de pago:</td>
+            <td class="value">{{ order.get_metodo_pago_display }}</td>
+        </tr>
+        <tr>
+            <td class="label">Estado:</td>
+            <td class="value">{{ order.get_estado_display }}</td>
+        </tr>
+        <tr>
+            <td class="label">Fecha:</td>
+            <td class="value">{{ order.fecha_creacion|date:"d/m/Y H:i" }}</td>
+        </tr>
+    </table>
+</div>
+
+<h3 style="color: #1a1a4d; margin-bottom: 15px;">Dirección de Envío</h3>
+
+<div class="order-details">
+    <table>
+        <tr>
+            <td colspan="2">
+                {{ order.direccion_envio }}<br>
+                {{ order.codigo_postal_envio }} {{ order.ciudad_envio }}
+            </td>
+        </tr>
+    </table>
+</div>
+
+<h3 style="color: #1a1a4d; margin-bottom: 15px;">Resumen de la Compra</h3>
+
+<div class="order-details">
+    <table>
+        <tr>
+            <td class="label">Subtotal:</td>
+            <td class="value">{{ order.subtotal }} €</td>
+        </tr>
+        <tr>
+            <td class="label">IVA ({{ tax_rate }}%):</td>
+            <td class="value">{{ order.impuestos }} €</td>
+        </tr>
+        <tr>
+            <td class="label">Gastos de envío:</td>
+            <td class="value">{{ order.coste_entrega }} €</td>
+        </tr>
+        <tr style="border-top: 2px solid #1a1a4d;">
+            <td class="label" style="padding-top: 15px; font-size: 18px;"><strong>Total:</strong></td>
+            <td class="value" style="padding-top: 15px; font-size: 18px; color: #1a1a4d;">{{ order.total }} €</td>
+        </tr>
+    </table>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #666666; font-size: 14px;">Si tienes alguna pregunta sobre tu pedido, no dudes en contactarnos a través de nuestro correo electrónico o teléfono.</p>
+
+<p style="margin-top: 25px;">¡Gracias por confiar en Calzados Marilo!</p>
+{% endblock %}

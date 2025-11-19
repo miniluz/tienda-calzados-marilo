@@ -1,0 +1,12 @@
+{% extends "orders/checkout_base.html" %}
+
+{% block checkout_content %}
+<div class="text-center mt-5">
+    <h2>Pago cancelado</h2>
+    <p>Has cancelado el pago o ha ocurrido un error. Puedes intentarlo de nuevo.</p>
+    <p>
+        <a href="{% url 'orders:checkout_payment' %}" class="btn btn-primary">Volver al pago</a>
+        <a href="/" class="btn btn-outline-secondary">Volver a la tienda</a>
+    </p>
+</div>
+{% endblock %}

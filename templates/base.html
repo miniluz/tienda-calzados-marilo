@@ -135,6 +135,9 @@
                 {% endif %}
 
                 <ul class="navbar-nav">
+                    <li class="nav-item me-2">
+                        <a class="nav-link" href="{% url 'orders:order_lookup' %}">Seguimiento de pedidos</a>
+                    </li>
                     {% if user.is_authenticated %}
                         {% if user.is_staff %}
                             <li class="nav-item me-2">
@@ -149,6 +152,7 @@
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 {% if not user.is_staff %}
                                     <li><a class="dropdown-item" href="{% url 'profile' %}">Mi Perfil</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'orders:order_list' %}">Mis Pedidos</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                 {% endif %}
                                 <li>
@@ -174,6 +178,17 @@
                         </li>
                     {% endif %}
                 </ul>
+                <div class="ms-3">
+                    <a href="{% url 'carrito:view_carrito' %}" class="btn btn-outline-light position-relative">
+                        <i class="bi bi-cart-fill"></i>
+                        {% if request.session.carrito_zapatos_count %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ request.session.carrito_zapatos_count }}
+                                <span class="visually-hidden">artículos en el carrito</span>
+                            </span>
+                        {% endif %}
+                    </a>
+                </div>
             </div>
         </div>
     </nav>

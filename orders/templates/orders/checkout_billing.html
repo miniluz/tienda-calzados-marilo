@@ -1,0 +1,76 @@
+{% extends "orders/checkout_base.html" %}
+
+{% block checkout_content %}
+<form method="post">
+    {% csrf_token %}
+
+    <div class="alert alert-info mb-3">
+        <i class="bi bi-info-circle"></i>
+        Hemos rellenado el formulario con tus datos guardados.
+        <div class="d-flex gap-2 mt-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="copyFromShipping">
+                <i class="bi bi-box-seam"></i> Usar dirección de envío
+            </button>
+            {% if user_data %}
+            <button type="button" class="btn btn-sm btn-outline-primary" id="useProfileAddress">
+                <i class="bi bi-person"></i> Usar la dirección de mi perfil
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form.direccion_facturacion.label_tag }}
+        {{ form.direccion_facturacion }}
+        {% if form.direccion_facturacion.errors %}
+            <div class="text-danger">{{ form.direccion_facturacion.errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mb-3">
+            {{ form.ciudad_facturacion.label_tag }}
+            {{ form.ciudad_facturacion }}
+            {% if form.ciudad_facturacion.errors %}
+                <div class="text-danger">{{ form.ciudad_facturacion.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4 mb-3">
+            {{ form.codigo_postal_facturacion.label_tag }}
+            {{ form.codigo_postal_facturacion }}
+            {% if form.codigo_postal_facturacion.errors %}
+                <div class="text-danger">{{ form.codigo_postal_facturacion.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            Continuar al Pago
+            <i class="bi bi-arrow-right"></i>
+        </button>
+        <a href="{% url 'orders:checkout_shipping' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</form>
+
+<script>
+// Copy from shipping address
+document.getElementById('copyFromShipping').addEventListener('click', function() {
+    {% if order.direccion_envio %}document.getElementById('id_direccion_facturacion').value = '{{ order.direccion_envio|escapejs }}';{% endif %}
+    {% if order.ciudad_envio %}document.getElementById('id_ciudad_facturacion').value = '{{ order.ciudad_envio }}';{% endif %}
+    {% if order.codigo_postal_envio %}document.getElementById('id_codigo_postal_facturacion').value = '{{ order.codigo_postal_envio }}';{% endif %}
+});
+
+{% if user_data %}
+// Use profile address
+document.getElementById('useProfileAddress').addEventListener('click', function() {
+    {% if user_data.direccion_facturacion %}document.getElementById('id_direccion_facturacion').value = '{{ user_data.direccion_facturacion|escapejs }}';{% endif %}
+    {% if user_data.ciudad_facturacion %}document.getElementById('id_ciudad_facturacion').value = '{{ user_data.ciudad_facturacion }}';{% endif %}
+    {% if user_data.codigo_postal_facturacion %}document.getElementById('id_codigo_postal_facturacion').value = '{{ user_data.codigo_postal_facturacion }}';{% endif %}
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -105,5 +105,65 @@
             </div>
         </div>
     </div>
+
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-cart-check-fill"></i> Gestión de Pedidos
+                </h5>
+                <p class="card-text text-muted">
+                    Administra los pedidos de clientes. Visualiza detalles y actualiza el estado de envío.
+                </p>
+                <div class="mt-auto">
+                    <a href="{% url 'order_management_list' %}" class="btn btn-primary w-100">
+                        Ir a Gestión de Pedidos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-shop"></i> Catálogo de Zapatos
+                </h5>
+                <p class="card-text text-muted">
+                    Accede al catálogo público de zapatos para ver todos los productos disponibles.
+                </p>
+                <div class="mt-auto">
+                    <a href="{% url 'catalog:zapato_list' %}" class="btn btn-primary w-100">
+                        Ir al Catálogo de zapatos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow h-100 border-warning">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <i class="bi bi-trash-fill text-warning"></i> Limpiar Pedidos Expirados
+                </h5>
+                <p class="card-text text-muted">
+                    Elimina pedidos no pagados que han expirado y restaura el stock reservado.
+                </p>
+                <div class="mt-auto">
+                    <form method="post" action="{% url 'cleanup_expired_orders' %}" onsubmit="return confirm('¿Estás seguro de que quieres limpiar los pedidos expirados?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="bi bi-arrow-clockwise"></i> Ejecutar Limpieza
+                        </button>
+                    </form>
+                    <small class="text-muted mt-2 d-block">
+                        Se ejecuta automáticamente cada {{ cleanup_minutes|default:"5" }} minutos
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

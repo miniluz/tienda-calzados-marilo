@@ -1,0 +1,29 @@
+{% extends "orders/checkout_base.html" %}
+
+{% block checkout_content %}
+<div class="text-center mt-5">
+    <h2>Validando el pago</h2>
+    <p>Estamos comprobando el estado del pago. Serás redirigido en unos segundos.</p>
+    <p id="countdown">5</p>
+    <p>
+        <a href="{% url 'orders:stripe_cancel' %}" class="btn btn-danger">Cancelar</a>
+    </p>
+</div>
+
+<script>
+let t = 5;
+const el = document.getElementById('countdown');
+const reload = () => {
+    if (t <= 0) {
+        // reload the page to check status again
+        window.location.reload();
+    } else {
+        el.textContent = t;
+        t -= 1;
+        setTimeout(reload, 1000);
+    }
+};
+setTimeout(reload, 1000);
+</script>
+
+{% endblock %}
