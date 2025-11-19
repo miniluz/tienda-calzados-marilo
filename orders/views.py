@@ -199,7 +199,7 @@ class CheckoutContactView(View):
             order.telefono = form.cleaned_data["telefono"]
             order.save()
 
-            return redirect("orders:checkout_shipping")
+            return redirect("orders:checkout_address")
 
         context = {
             "form": form,
@@ -209,6 +209,105 @@ class CheckoutContactView(View):
         }
 
         return render(request, "orders/checkout_contact.html", context)
+
+    def _get_order(self, request):
+        order_id = request.session.get("checkout_order_id")
+        if not order_id:
+            return None
+        try:
+            order = Order.objects.get(id=order_id, pagado=False)
+
+            if request.user.is_authenticated and order.usuario is not None:
+                if order.usuario != request.user:
+                    return None
+
+            return order
+        except Order.DoesNotExist:
+            return None
+
+
+class CheckoutAddressView(View):
+    """Step 2: Collect both shipping and billing addresses"""
+
+    def get(self, request):
+        order = self._get_order(request)
+        if not order:
+            env_config = getEnvConfig()
+            messages.warning(
+                request,
+                f"Tu pedido ha expirado. Los artículos se reservan durante {env_config.get_order_reservation_minutes()} minutos. "
+                "Por favor, inicia el proceso de nuevo.",
+            )
+            return redirect("orders:checkout_start")
+
+        # Pre-fill both forms with user's profile address if authenticated
+        shipping_initial = {}
+        billing_initial = {}
+        if request.user.is_authenticated and hasattr(request.user, "customer"):
+            customer = request.user.customer
+            shipping_initial = {
+                "direccion_envio": customer.address,
+                "ciudad_envio": customer.city,
+                "codigo_postal_envio": customer.postal_code,
+            }
+            billing_initial = {
+                "direccion_facturacion": customer.address,
+                "ciudad_facturacion": customer.city,
+                "codigo_postal_facturacion": customer.postal_code,
+            }
+
+        shipping_form = ShippingAddressForm(initial=shipping_initial)
+        billing_form = BillingAddressForm(initial=billing_initial)
+
+        context = {
+            "shipping_form": shipping_form,
+            "billing_form": billing_form,
+            "order": order,
+            "step": 2,
+            "step_name": "Direcciones",
+            "user_data": shipping_initial if request.user.is_authenticated else None,
+        }
+
+        return render(request, "orders/checkout_address.html", context)
+
+    def post(self, request):
+        order = self._get_order(request)
+        if not order:
+            env_config = getEnvConfig()
+            messages.warning(
+                request,
+                f"Tu pedido ha expirado. Los artículos se reservan durante {env_config.get_order_reservation_minutes()} minutos. "
+                "Por favor, inicia el proceso de nuevo.",
+            )
+            return redirect("orders:checkout_start")
+
+        shipping_form = ShippingAddressForm(request.POST)
+        billing_form = BillingAddressForm(request.POST)
+
+        if shipping_form.is_valid() and billing_form.is_valid():
+            # Save shipping address
+            order.direccion_envio = shipping_form.cleaned_data["direccion_envio"]
+            order.ciudad_envio = shipping_form.cleaned_data["ciudad_envio"]
+            order.codigo_postal_envio = shipping_form.cleaned_data["codigo_postal_envio"]
+
+            # Save billing address
+            order.direccion_facturacion = billing_form.cleaned_data["direccion_facturacion"]
+            order.ciudad_facturacion = billing_form.cleaned_data["ciudad_facturacion"]
+            order.codigo_postal_facturacion = billing_form.cleaned_data["codigo_postal_facturacion"]
+
+            order.save()
+
+            return redirect("orders:checkout_payment")
+
+        context = {
+            "shipping_form": shipping_form,
+            "billing_form": billing_form,
+            "order": order,
+            "step": 2,
+            "step_name": "Direcciones",
+        }
+
+        return render(request, "orders/checkout_address.html", context)
 
     def _get_order(self, request):
         order_id = request.session.get("checkout_order_id")
@@ -389,7 +488,7 @@ class CheckoutBillingView(View):
 
 
 class CheckoutPaymentView(View):
-    """Step 4: Review order and process payment"""
+    """Step 3: Review order and process payment"""
 
     def get(self, request):
         order = self._get_order(request)
@@ -419,7 +518,7 @@ class CheckoutPaymentView(View):
         context = {
             "form": form,
             "order": order,
-            "step": 4,
+            "step": 3,
             "step_name": "Pago y Revisión",
             "descuento": descuento,
         }
@@ -488,7 +587,7 @@ class CheckoutPaymentView(View):
         context = {
             "form": form,
             "order": order,
-            "step": 4,
+            "step": 3,
             "step_name": "Pago y Revisión",
             "descuento": descuento,
         }
