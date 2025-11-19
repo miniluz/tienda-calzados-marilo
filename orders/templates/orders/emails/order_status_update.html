@@ -1,0 +1,63 @@
+{% extends "orders/emails/base_email.html" %}
+
+{% block title %}Actualización de Pedido - Calzados Marilo{% endblock %}
+
+{% block content %}
+<h2>Actualización del Estado de tu Pedido</h2>
+
+<p>Hola {{ order.nombre }},</p>
+
+<p>Te informamos que el estado de tu pedido ha sido actualizado:</p>
+
+<div class="order-code">
+    <strong>Código de pedido:</strong> {{ order.codigo_pedido }}
+</div>
+
+<div class="order-details" style="background-color: #d4d4e0; border-left: 4px solid #1a1a4d;">
+    <table>
+        <tr>
+            <td class="label">Nuevo estado:</td>
+            <td class="value" style="color: #1a1a4d; font-size: 18px;">{{ order.get_estado_display }}</td>
+        </tr>
+    </table>
+</div>
+
+{% if order.estado == 'en_envio' %}
+<p>¡Buenas noticias! Tu pedido está en camino. Recibirás tu compra en los próximos días.</p>
+{% elif order.estado == 'recibido' %}
+<p>Tu pedido ha sido marcado como recibido. Esperamos que disfrutes de tu compra.</p>
+{% elif order.estado == 'por_enviar' %}
+<p>Tu pedido está siendo preparado para su envío. Te notificaremos cuando salga de nuestras instalaciones.</p>
+{% endif %}
+
+<p>Puedes consultar el estado actualizado de tu pedido en cualquier momento:</p>
+
+<a href="{{ tracking_url }}" class="button">Ver Estado del Pedido</a>
+
+<div class="divider"></div>
+
+<h3 style="color: #1a1a4d; margin-bottom: 15px;">Detalles del Pedido</h3>
+
+<div class="order-details">
+    <table>
+        <tr>
+            <td class="label">Fecha del pedido:</td>
+            <td class="value">{{ order.fecha_creacion|date:"d/m/Y H:i" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Total:</td>
+            <td class="value">{{ order.total }} €</td>
+        </tr>
+        <tr>
+            <td class="label">Dirección de envío:</td>
+            <td class="value">{{ order.direccion_envio }}, {{ order.codigo_postal_envio }} {{ order.ciudad_envio }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="divider"></div>
+
+<p style="color: #666666; font-size: 14px;">Si tienes alguna pregunta sobre tu pedido, no dudes en contactarnos a través de nuestro correo electrónico o teléfono.</p>
+
+<p style="margin-top: 25px;">Gracias por tu confianza.</p>
+{% endblock %}

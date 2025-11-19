@@ -38,6 +38,7 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("management/", include("management.urls")),
     path("carrito/", include("carrito.urls", namespace="carrito")),
+    path("orders/", include("orders.urls", namespace="orders")),
     path("", home_redirect, name="home"),
 ]
 

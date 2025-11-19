@@ -6,8 +6,10 @@ from django.urls import reverse
 class Zapato(models.Model):
     nombre = models.CharField("Nombre", max_length=200)
     descripcion = models.TextField("Descripción", blank=True)
-    precio = models.IntegerField("Precio", validators=[MinValueValidator(1)])
-    precioOferta = models.IntegerField("Precio de Oferta", blank=True, null=True, validators=[MinValueValidator(1)])
+    precio = models.DecimalField("Precio", max_digits=10, decimal_places=2, validators=[MinValueValidator(1)])
+    precioOferta = models.DecimalField(
+        "Precio de oferta", blank=True, null=True, max_digits=10, decimal_places=2, validators=[MinValueValidator(1)]
+    )
     genero = models.CharField(
         "Género",
         max_length=50,
@@ -27,7 +29,13 @@ class Zapato(models.Model):
     fechaCreacion = models.DateField("Fecha de Creación", auto_now_add=True)
     fechaActualizacion = models.DateField("Fecha de Actualización", auto_now=True)
     marca = models.ForeignKey("Marca", on_delete=models.PROTECT, related_name="zapatos")
-    categoria = models.ForeignKey("Categoria", on_delete=models.SET_NULL, related_name="zapatos", blank=True, null=True)
+    categoria = models.ForeignKey(
+        "Categoria",
+        on_delete=models.SET_NULL,
+        related_name="zapatos",
+        blank=True,
+        null=True,
+    )
 
     def __str__(self):
         return f"{self.nombre} ({self.descripcion})"

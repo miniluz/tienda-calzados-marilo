@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Seguimiento de pedidos - Tienda Calzados Marilo{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-search text-primary" style="font-size: 3rem;"></i>
+                        <h1 class="mt-3 mb-2">Seguimiento de pedidos</h1>
+                        <p class="text-muted">
+                            Introduce tu código de pedido para consultar su estado
+                        </p>
+                    </div>
+
+                    <form method="post" action="{% url 'orders:order_lookup' %}">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            {{ form.codigo_pedido.label_tag }}
+                            {{ form.codigo_pedido }}
+                            {% if form.codigo_pedido.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.codigo_pedido.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                El código de pedido se encuentra en tu correo de confirmación
+                            </small>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-search me-2"></i>Buscar
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p class="mb-2"><small class="text-muted">¿No tienes tu código de pedido?</small></p>
+                        {% if user.is_authenticated and not user.is_staff %}
+                            <a href="{% url 'orders:order_list' %}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-list-ul me-1"></i>Ver Mis Pedidos
+                            </a>
+                        {% else %}
+                            <p class="mb-0">
+                                <small class="text-muted">
+                                    Revisa tu correo electrónico o contacta con nosotros en
+                                    <a href="mailto:info@calzmarilo.es">info@calzmarilo.es</a>
+                                </small>
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

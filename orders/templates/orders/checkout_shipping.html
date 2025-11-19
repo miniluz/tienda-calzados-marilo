@@ -1,0 +1,63 @@
+{% extends "orders/checkout_base.html" %}
+
+{% block checkout_content %}
+<form method="post">
+    {% csrf_token %}
+    
+    {% if user_data %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        Hemos rellenado el formulario con tu dirección guardada.
+        <button type="button" class="btn btn-sm btn-outline-primary float-end" id="restoreDefaults">
+            <i class="bi bi-person"></i> Usar la dirección de mi perfil
+        </button>
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+        {{ form.direccion_envio.label_tag }}
+        {{ form.direccion_envio }}
+        {% if form.direccion_envio.errors %}
+            <div class="text-danger">{{ form.direccion_envio.errors }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mb-3">
+            {{ form.ciudad_envio.label_tag }}
+            {{ form.ciudad_envio }}
+            {% if form.ciudad_envio.errors %}
+                <div class="text-danger">{{ form.ciudad_envio.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            {{ form.codigo_postal_envio.label_tag }}
+            {{ form.codigo_postal_envio }}
+            {% if form.codigo_postal_envio.errors %}
+                <div class="text-danger">{{ form.codigo_postal_envio.errors }}</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            Continuar a Dirección de Facturación
+            <i class="bi bi-arrow-right"></i>
+        </button>
+        <a href="{% url 'orders:checkout_contact' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</form>
+
+{% if user_data %}
+<script>
+document.getElementById('restoreDefaults').addEventListener('click', function() {
+    {% if user_data.direccion_envio %}document.getElementById('id_direccion_envio').value = '{{ user_data.direccion_envio|escapejs }}';{% endif %}
+    {% if user_data.ciudad_envio %}document.getElementById('id_ciudad_envio').value = '{{ user_data.ciudad_envio }}';{% endif %}
+    {% if user_data.codigo_postal_envio %}document.getElementById('id_codigo_postal_envio').value = '{{ user_data.codigo_postal_envio }}';{% endif %}
+});
+</script>
+{% endif %}
+{% endblock %}
