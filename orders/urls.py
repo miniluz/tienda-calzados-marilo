@@ -33,6 +33,10 @@ urlpatterns = [
         views.CheckoutPaymentView.as_view(),
         name="checkout_payment",
     ),
+    # Stripe integration endpoints
+    path("checkout/stripe/return/", views.StripeReturnView.as_view(), name="stripe_return"),
+    path("checkout/stripe/cancel/", views.StripeCancelView.as_view(), name="stripe_cancel"),
+    path("checkout/stripe/webhook/", views.StripeWebhookView.as_view(), name="stripe_webhook"),
     # Order views
     path("success/<str:codigo>/", views.OrderSuccessView.as_view(), name="order_success"),
     path("", views.OrderListView.as_view(), name="order_list"),
