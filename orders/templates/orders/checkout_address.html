@@ -1,0 +1,142 @@
+{% extends "orders/checkout_base.html" %}
+
+{% block checkout_content %}
+<form method="post">
+    {% csrf_token %}
+
+    <!-- Shipping Address Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-box-seam"></i> Dirección de Envío</h5>
+        </div>
+        <div class="card-body">
+            {% if user_data %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                Hemos rellenado el formulario con tu dirección guardada.
+                <button type="button" class="btn btn-sm btn-outline-primary float-end" id="restoreShippingDefaults">
+                    <i class="bi bi-person"></i> Usar la dirección de mi perfil
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                {{ shipping_form.direccion_envio.label_tag }}
+                {{ shipping_form.direccion_envio }}
+                {% if shipping_form.direccion_envio.errors %}
+                    <div class="text-danger">{{ shipping_form.direccion_envio.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    {{ shipping_form.ciudad_envio.label_tag }}
+                    {{ shipping_form.ciudad_envio }}
+                    {% if shipping_form.ciudad_envio.errors %}
+                        <div class="text-danger">{{ shipping_form.ciudad_envio.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    {{ shipping_form.codigo_postal_envio.label_tag }}
+                    {{ shipping_form.codigo_postal_envio }}
+                    {% if shipping_form.codigo_postal_envio.errors %}
+                        <div class="text-danger">{{ shipping_form.codigo_postal_envio.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Billing Address Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-receipt"></i> Dirección de Facturación</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                Hemos rellenado el formulario con tus datos guardados.
+                <div class="d-flex gap-2 mt-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="copyFromShipping">
+                        <i class="bi bi-box-seam"></i> Copiar de dirección de envío
+                    </button>
+                    {% if user_data %}
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="restoreBillingDefaults">
+                        <i class="bi bi-person"></i> Usar la dirección de mi perfil
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {{ billing_form.direccion_facturacion.label_tag }}
+                {{ billing_form.direccion_facturacion }}
+                {% if billing_form.direccion_facturacion.errors %}
+                    <div class="text-danger">{{ billing_form.direccion_facturacion.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    {{ billing_form.ciudad_facturacion.label_tag }}
+                    {{ billing_form.ciudad_facturacion }}
+                    {% if billing_form.ciudad_facturacion.errors %}
+                        <div class="text-danger">{{ billing_form.ciudad_facturacion.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    {{ billing_form.codigo_postal_facturacion.label_tag }}
+                    {{ billing_form.codigo_postal_facturacion }}
+                    {% if billing_form.codigo_postal_facturacion.errors %}
+                        <div class="text-danger">{{ billing_form.codigo_postal_facturacion.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            Continuar al Pago
+            <i class="bi bi-arrow-right"></i>
+        </button>
+        <a href="{% url 'orders:checkout_contact' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+</form>
+
+<script>
+// Copy from shipping address to billing address
+document.getElementById('copyFromShipping').addEventListener('click', function() {
+    // Get current values from shipping form
+    const shippingAddress = document.getElementById('id_direccion_envio').value;
+    const shippingCity = document.getElementById('id_ciudad_envio').value;
+    const shippingPostalCode = document.getElementById('id_codigo_postal_envio').value;
+
+    // Set billing form values
+    document.getElementById('id_direccion_facturacion').value = shippingAddress;
+    document.getElementById('id_ciudad_facturacion').value = shippingCity;
+    document.getElementById('id_codigo_postal_facturacion').value = shippingPostalCode;
+});
+
+{% if user_data %}
+// Restore shipping defaults from user profile
+document.getElementById('restoreShippingDefaults').addEventListener('click', function() {
+    {% if user_data.direccion_envio %}document.getElementById('id_direccion_envio').value = '{{ user_data.direccion_envio|escapejs }}';{% endif %}
+    {% if user_data.ciudad_envio %}document.getElementById('id_ciudad_envio').value = '{{ user_data.ciudad_envio }}';{% endif %}
+    {% if user_data.codigo_postal_envio %}document.getElementById('id_codigo_postal_envio').value = '{{ user_data.codigo_postal_envio }}';{% endif %}
+});
+
+// Restore billing defaults from user profile
+document.getElementById('restoreBillingDefaults').addEventListener('click', function() {
+    {% if user_data.direccion_envio %}document.getElementById('id_direccion_facturacion').value = '{{ user_data.direccion_envio|escapejs }}';{% endif %}
+    {% if user_data.ciudad_envio %}document.getElementById('id_ciudad_facturacion').value = '{{ user_data.ciudad_envio }}';{% endif %}
+    {% if user_data.codigo_postal_envio %}document.getElementById('id_codigo_postal_facturacion').value = '{{ user_data.codigo_postal_envio }}';{% endif %}
+});
+{% endif %}
+</script>
+{% endblock %}
