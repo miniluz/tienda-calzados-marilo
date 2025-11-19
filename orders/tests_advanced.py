@@ -4,6 +4,7 @@ Advanced tests for orders app: edge cases, concurrency, cleanup, and integration
 
 import threading
 from decimal import Decimal
+from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import User
 from django.db import connection, transaction
@@ -158,7 +159,7 @@ class EdgeCaseStockTests(TestCase):
 
         # Restoration should not crash
         restored = restore_stock(order)
-        self.assertEqual(restored, 0)
+        self.assertEqual(restored, [])
 
 
 class ConcurrentPurchaseTests(TransactionTestCase):
@@ -517,8 +518,16 @@ class IntegrationCheckoutTests(TestCase):
             postal_code="12345",
         )
 
-    def test_full_checkout_flow_guest(self):
+    @patch.dict("os.environ", {"STRIPE_SECRET_KEY": "sk_test_mock_key"})
+    @patch("orders.utils.stripe.PaymentIntent.create")
+    def test_full_checkout_flow_guest(self, mock_stripe_create):
         """Test complete checkout flow as guest user"""
+        # Mock successful Stripe response
+        mock_intent = Mock()
+        mock_intent.id = "pi_test_integration_123"
+        mock_intent.status = "succeeded"
+        mock_stripe_create.return_value = mock_intent
+
         # Step 1: Start checkout
         response = self.client.get(reverse("orders:checkout_start"))
         self.assertEqual(response.status_code, 302)
@@ -543,23 +552,13 @@ class IntegrationCheckoutTests(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.nombre, "John")
 
-        # Step 3: Shipping address
+        # Step 3: Both shipping and billing addresses (unified page)
         response = self.client.post(
-            reverse("orders:checkout_shipping"),
+            reverse("orders:checkout_address"),
             {
                 "direccion_envio": "123 Main St",
                 "ciudad_envio": "Madrid",
                 "codigo_postal_envio": "28001",
-            },
-        )
-        self.assertEqual(response.status_code, 302)
-        order.refresh_from_db()
-        self.assertEqual(order.ciudad_envio, "Madrid")
-
-        # Step 4: Billing address (using same address as shipping)
-        response = self.client.post(
-            reverse("orders:checkout_billing"),
-            {
                 "direccion_facturacion": "123 Main St",
                 "ciudad_facturacion": "Madrid",
                 "codigo_postal_facturacion": "28001",
@@ -567,9 +566,10 @@ class IntegrationCheckoutTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         order.refresh_from_db()
+        self.assertEqual(order.ciudad_envio, "Madrid")
         self.assertEqual(order.direccion_facturacion, "123 Main St")
 
-        # Step 5: Payment
+        # Step 4: Payment
         response = self.client.post(
             reverse("orders:checkout_payment"),
             {"metodo_pago": "tarjeta"},
@@ -639,7 +639,7 @@ class IntegrationCheckoutTests(TestCase):
         self.client.get(reverse("orders:checkout_start"))
         order_id = self.client.session["checkout_order_id"]
 
-        # Fill contact and shipping
+        # Fill contact
         self.client.post(
             reverse("orders:checkout_contact"),
             {
@@ -649,20 +649,14 @@ class IntegrationCheckoutTests(TestCase):
                 "telefono": "123",
             },
         )
+
+        # Fill both shipping and billing with different addresses
         self.client.post(
-            reverse("orders:checkout_shipping"),
+            reverse("orders:checkout_address"),
             {
                 "direccion_envio": "Shipping St",
                 "ciudad_envio": "ShipCity",
                 "codigo_postal_envio": "11111",
-            },
-        )
-
-        # Use different billing address
-        self.client.post(
-            reverse("orders:checkout_billing"),
-            {
-                "misma_direccion": False,
                 "direccion_facturacion": "Billing Ave",
                 "ciudad_facturacion": "BillCity",
                 "codigo_postal_facturacion": "22222",
@@ -972,16 +966,15 @@ class PaymentTimingTests(TestCase):
             },
         )
         self.client.post(
-            reverse("orders:checkout_shipping"),
+            reverse("orders:checkout_address"),
             {
                 "direccion_envio": "Test St",
                 "ciudad_envio": "Test City",
                 "codigo_postal_envio": "12345",
+                "direccion_facturacion": "Test St",
+                "ciudad_facturacion": "Test City",
+                "codigo_postal_facturacion": "12345",
             },
-        )
-        self.client.post(
-            reverse("orders:checkout_billing"),
-            {"misma_direccion": True},
         )
 
         # Access payment page (should work)
