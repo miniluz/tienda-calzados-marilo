@@ -519,14 +519,14 @@ class IntegrationCheckoutTests(TestCase):
         )
 
     @patch.dict("os.environ", {"STRIPE_SECRET_KEY": "sk_test_mock_key"})
-    @patch("orders.utils.stripe.PaymentIntent.create")
+    @patch("stripe.checkout.Session.create")
     def test_full_checkout_flow_guest(self, mock_stripe_create):
         """Test complete checkout flow as guest user"""
-        # Mock successful Stripe response
-        mock_intent = Mock()
-        mock_intent.id = "pi_test_integration_123"
-        mock_intent.status = "succeeded"
-        mock_stripe_create.return_value = mock_intent
+        # Mock successful Stripe Checkout Session response
+        mock_session = Mock()
+        mock_session.id = "cs_test_integration_123"
+        mock_session.url = "https://checkout.stripe.com/test"
+        mock_stripe_create.return_value = mock_session
 
         # Step 1: Start checkout
         response = self.client.get(reverse("orders:checkout_start"))
@@ -574,12 +574,16 @@ class IntegrationCheckoutTests(TestCase):
             reverse("orders:checkout_payment"),
             {"metodo_pago": "tarjeta"},
         )
+        # Should redirect to Stripe Checkout
         self.assertEqual(response.status_code, 302)
-        order.refresh_from_db()
-        self.assertTrue(order.pagado)
+        self.assertEqual(response.url, "https://checkout.stripe.com/test")
 
-        # Verify session cleared
-        self.assertNotIn("checkout_order_id", self.client.session)
+        # Order should NOT be marked as paid yet (waiting for webhook)
+        order.refresh_from_db()
+        self.assertFalse(order.pagado)
+
+        # Session should still have the order (cleared after successful payment)
+        self.assertIn("checkout_order_id", self.client.session)
 
     def test_authenticated_user_data_prepopulation(self):
         """Test that authenticated users get data pre-populated"""
