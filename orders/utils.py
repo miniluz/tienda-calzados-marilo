@@ -5,7 +5,7 @@ import stripe
 
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from catalog.models import TallaZapato
@@ -373,6 +373,197 @@ def process_payment(order, payment_method="tarjeta"):
             "error": "incomplete",
             "message": f"El pago no se ha completado (estado: {intent.status}).",
         }
+
+
+@transaction.atomic
+def validate_and_clean_cart(carrito):
+    """
+    Validate cart items and remove/adjust items that are no longer available or have insufficient stock.
+
+    This function should be called:
+    - When viewing the cart
+    - After updating cart quantities
+    - Before proceeding to checkout
+
+    Args:
+        carrito: Carrito instance
+
+    Returns:
+        List of message dicts:
+        [
+            {
+                "type": "warning" | "error" | "info",
+                "message": "User-friendly message about the issue"
+            },
+            ...
+        ]
+    """
+    messages = []
+
+    # Get all cart items - use select_related to avoid N+1 queries
+    cart_items = carrito.zapatos.select_related("zapato", "zapato__marca").all()
+
+    for item in cart_items:
+        zapato = item.zapato
+
+        # Check if product is still available
+        if not zapato.estaDisponible:
+            messages.append(
+                {
+                    "type": "warning",
+                    "message": f"{zapato.nombre} ya no está disponible y ha sido eliminado del carrito.",
+                }
+            )
+            item.delete()
+            continue
+
+        # Check if size still exists and has stock
+        try:
+            talla_obj = TallaZapato.objects.select_for_update().get(zapato=zapato, talla=item.talla)
+        except TallaZapato.DoesNotExist:
+            messages.append(
+                {
+                    "type": "warning",
+                    "message": f"{zapato.nombre} (Talla {item.talla}) ya no está disponible y ha sido eliminado del carrito.",
+                }
+            )
+            item.delete()
+            continue
+
+        # Check if there's sufficient stock
+        if talla_obj.stock == 0:
+            messages.append(
+                {
+                    "type": "warning",
+                    "message": f"{zapato.nombre} (Talla {item.talla}) está agotado y ha sido eliminado del carrito.",
+                }
+            )
+            item.delete()
+            continue
+
+        # Adjust quantity if stock is insufficient
+        if item.cantidad > talla_obj.stock:
+            old_cantidad = item.cantidad
+            item.cantidad = talla_obj.stock
+            item.save()
+            messages.append(
+                {
+                    "type": "info",
+                    "message": f"La cantidad de {zapato.nombre} (Talla {item.talla}) se ajustó de {old_cantidad} a {item.cantidad} debido al stock disponible.",
+                }
+            )
+
+    return messages
+
+
+@transaction.atomic
+def create_order_from_items(cart_items, user, request):
+    """
+    Create an order from cart items. This unifies order creation logic between
+    "Comprar ya" and "Proceed to checkout" flows.
+
+    Args:
+        cart_items: List of dicts with 'zapato', 'talla', 'cantidad' keys
+        user: User instance (or None for guest)
+        request: HttpRequest instance (for session management)
+
+    Returns:
+        Tuple of (order, success, error_message):
+        - order: Order instance if successful, None otherwise
+        - success: Boolean indicating success
+        - error_message: String with error message if failed, None if successful
+    """
+    # Import here to avoid circular imports
+    from orders.models import Order, OrderItem
+
+    # Validate cart items
+    if not cart_items:
+        return None, False, "El carrito está vacío."
+
+    # Calculate prices
+    try:
+        prices = calculate_order_prices(cart_items)
+    except ValueError as e:
+        return None, False, str(e)
+
+    # Try to create order with retry logic for unique code
+    max_retries = 5
+    order = None
+
+    for attempt in range(max_retries):
+        codigo_pedido = generate_order_code()
+        try:
+            with transaction.atomic():
+                # Reserve stock first (will raise ValueError if insufficient)
+                reserve_stock(cart_items)
+
+                # Create order
+                order = Order.objects.create(
+                    codigo_pedido=codigo_pedido,
+                    usuario=user if user.is_authenticated else None,
+                    subtotal=prices["subtotal"],
+                    impuestos=prices["impuestos"],
+                    coste_entrega=prices["coste_entrega"],
+                    total=prices["total"],
+                    metodo_pago="tarjeta",
+                    pagado=False,
+                    nombre="",
+                    apellido="",
+                    email="",
+                    telefono="",
+                    direccion_envio="",
+                    ciudad_envio="",
+                    codigo_postal_envio="",
+                    direccion_facturacion="",
+                    ciudad_facturacion="",
+                    codigo_postal_facturacion="",
+                )
+                break
+        except IntegrityError:
+            # Code collision - retry
+            if attempt == max_retries - 1:
+                return None, False, "No se pudo generar un código de pedido único. Por favor, inténtalo de nuevo."
+            continue
+        except ValueError as e:
+            # Stock reservation failed
+            return None, False, str(e)
+
+    if order is None:
+        return None, False, "Error al crear el pedido."
+
+    # Create order items
+    try:
+        for item in cart_items:
+            zapato = item["zapato"]
+            precio_unitario = Decimal(str(zapato.precioOferta)) if zapato.precioOferta else Decimal(str(zapato.precio))
+            cantidad = item["cantidad"]
+
+            descuento = Decimal("0.00")
+            if zapato.precioOferta:
+                precio_original = Decimal(str(zapato.precio))
+                descuento = (precio_original - precio_unitario) * cantidad
+
+            OrderItem.objects.create(
+                pedido=order,
+                zapato=zapato,
+                talla=item["talla"],
+                cantidad=cantidad,
+                precio_unitario=precio_unitario,
+                total=precio_unitario * cantidad,
+                descuento=descuento,
+            )
+
+        # Store order info in session
+        request.session["checkout_order_id"] = order.id
+        request.session["checkout_descuento"] = str(prices["descuento"])
+
+        return order, True, None
+
+    except Exception as e:
+        # Unexpected error - order was created but items failed
+        # Stock is already reserved, so we should not restore it here
+        # The cleanup job will handle this if payment isn't completed
+        return order, False, f"Error al crear los items del pedido: {str(e)}"
 
 
 def cleanup_expired_orders():

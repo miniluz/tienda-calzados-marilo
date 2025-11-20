@@ -1,14 +1,14 @@
-from decimal import Decimal
-
 from django.contrib import messages
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.db.utils import OperationalError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from catalog.models import Zapato
-from orders.models import Order, OrderItem
-from orders.utils import calculate_order_prices, generate_order_code, reserve_stock
+from catalog.models import Zapato, TallaZapato
+from orders.utils import (
+    create_order_from_items,
+    validate_and_clean_cart,
+)
 from tienda_calzados_marilo.env import getEnvConfig
 
 from .models import Carrito, ZapatoCarrito
@@ -29,7 +29,19 @@ def view_carrito(request):
         messages.error(request, "La base de datos no está disponible. Ejecuta las migraciones (manage.py migrate).")
         return redirect("home")  # ajusta la vista de destino si hace falta
 
-    # Obtener los items del carrito
+    # Validate and clean cart - remove unavailable items and adjust quantities
+    validation_messages = validate_and_clean_cart(carrito)
+
+    # Display validation messages to user
+    for msg in validation_messages:
+        if msg["type"] == "warning":
+            messages.warning(request, msg["message"])
+        elif msg["type"] == "error":
+            messages.error(request, msg["message"])
+        elif msg["type"] == "info":
+            messages.info(request, msg["message"])
+
+    # Obtener los items del carrito (after validation)
     zapatos_carrito = carrito.zapatos.all()
 
     # Calcular el total
@@ -69,46 +81,54 @@ def add_to_carrito(request, zapato_id):
 
     talla = int(talla)
 
-    # Verificar stock disponible para la talla seleccionada
-    talla_obj = zapato.tallas.filter(talla=talla).first()
-    if not talla_obj or talla_obj.stock <= 0:
-        messages.error(request, f"La talla {talla} no está disponible para este producto.")
-        return redirect(request.META.get("HTTP_REFERER", "catalog:zapato_list"))
+    # Use transaction with select_for_update to prevent race conditions
+    try:
+        with transaction.atomic():
+            # Lock the size row to prevent concurrent modifications
+            talla_obj = TallaZapato.objects.select_for_update().filter(zapato=zapato, talla=talla).first()
 
-    # Verificar si ya existe este producto con esta talla en el carrito
-    zapato_carrito_existente = ZapatoCarrito.objects.filter(carrito=carrito, zapato=zapato, talla=talla).first()
+            if not talla_obj or talla_obj.stock <= 0:
+                messages.error(request, f"La talla {talla} no está disponible para este producto.")
+                return redirect(request.META.get("HTTP_REFERER", "catalog:zapato_list"))
 
-    if zapato_carrito_existente:
-        # Incrementar cantidad sin superar el stock
-        nueva_cantidad = zapato_carrito_existente.cantidad + cantidad
-        if nueva_cantidad > talla_obj.stock:
-            nueva_cantidad = talla_obj.stock
-            if zapato_carrito_existente.cantidad == talla_obj.stock:
-                messages.warning(
-                    request,
-                    f"No se puede añadir más unidades de {zapato.nombre} (Talla {talla}).",
-                )
+            # Verificar si ya existe este producto con esta talla en el carrito
+            zapato_carrito_existente = ZapatoCarrito.objects.filter(carrito=carrito, zapato=zapato, talla=talla).first()
+
+            if zapato_carrito_existente:
+                # Incrementar cantidad sin superar el stock
+                nueva_cantidad = zapato_carrito_existente.cantidad + cantidad
+                if nueva_cantidad > talla_obj.stock:
+                    nueva_cantidad = talla_obj.stock
+                    if zapato_carrito_existente.cantidad == talla_obj.stock:
+                        messages.warning(
+                            request,
+                            f"No se puede añadir más unidades de {zapato.nombre} (Talla {talla}).",
+                        )
+                    else:
+                        messages.info(
+                            request,
+                            f"Cantidad ajustada al máximo disponible para {zapato.nombre} (Talla {talla}).",
+                        )
+                zapato_carrito_existente.cantidad = nueva_cantidad
+                zapato_carrito_existente.save()
+                messages.success(request, f"Se actualizó la cantidad de {zapato.nombre} (Talla {talla}) en el carrito")
             else:
-                messages.info(
-                    request,
-                    f"Cantidad ajustada al máximo disponible para {zapato.nombre} (Talla {talla}).",
-                )
-        zapato_carrito_existente.cantidad = nueva_cantidad
-        zapato_carrito_existente.save()
-        messages.success(request, f"Se actualizó la cantidad de {zapato.nombre} (Talla {talla}) en el carrito")
-    else:
-        # Crear nuevo item sin superar el stock
-        cantidad_crear = cantidad if cantidad <= talla_obj.stock else talla_obj.stock
-        if cantidad_crear <= 0:
-            messages.error(request, f"No hay stock disponible para {zapato.nombre} (Talla {talla}).")
-            return redirect(request.META.get("HTTP_REFERER", "catalog:zapato_list"))
-        if cantidad_crear < cantidad:
-            messages.info(
-                request,
-                f"Cantidad solicitada ajustada por límite de stock para {zapato.nombre} (Talla {talla}).",
-            )
-        ZapatoCarrito.objects.create(carrito=carrito, zapato=zapato, cantidad=cantidad_crear, talla=talla)
-        messages.success(request, f"{zapato.nombre} (Talla {talla}) añadido al carrito con éxito")
+                # Crear nuevo item sin superar el stock
+                cantidad_crear = cantidad if cantidad <= talla_obj.stock else talla_obj.stock
+                if cantidad_crear <= 0:
+                    messages.error(request, f"No hay stock disponible para {zapato.nombre} (Talla {talla}).")
+                    return redirect(request.META.get("HTTP_REFERER", "catalog:zapato_list"))
+                if cantidad_crear < cantidad:
+                    messages.info(
+                        request,
+                        f"Cantidad solicitada ajustada por límite de stock para {zapato.nombre} (Talla {talla}).",
+                    )
+                ZapatoCarrito.objects.create(carrito=carrito, zapato=zapato, cantidad=cantidad_crear, talla=talla)
+                messages.success(request, f"{zapato.nombre} (Talla {talla}) añadido al carrito con éxito")
+
+    except Exception as e:
+        messages.error(request, f"Error al añadir el producto al carrito: {str(e)}")
+        return redirect(request.META.get("HTTP_REFERER", "catalog:zapato_list"))
 
     # Redirigir de vuelta a la página anterior o al catálogo
     return redirect(request.META.get("HTTP_REFERER", "catalog:zapato_list"))
@@ -129,30 +149,41 @@ def update_quantity_carrito(request, zapato_carrito_id):
     zapato_carrito = get_object_or_404(ZapatoCarrito, id=zapato_carrito_id)
     action = request.POST.get("action")
 
-    if action == "increase":
-        # Validar stock máximo para esa talla
-        talla_obj = zapato_carrito.zapato.tallas.filter(talla=zapato_carrito.talla).first()
-        max_stock = talla_obj.stock if talla_obj else 0
-        if zapato_carrito.cantidad >= max_stock:
-            messages.warning(
-                request,
-                f"No puedes añadir más unidades de {zapato_carrito.zapato.nombre} (Talla {zapato_carrito.talla}).",
-            )
-        else:
-            zapato_carrito.cantidad += 1
-            zapato_carrito.save()
-            messages.success(request, f"Cantidad actualizada a {zapato_carrito.cantidad}")
-    elif action == "decrease":
-        if zapato_carrito.cantidad > 1:
-            zapato_carrito.cantidad -= 1
-            zapato_carrito.save()
-            messages.success(request, f"Cantidad actualizada a {zapato_carrito.cantidad}")
-        else:
-            # Si la cantidad es 1, eliminar el item
-            nombre_zapato = zapato_carrito.zapato.nombre
-            talla = zapato_carrito.talla
-            zapato_carrito.delete()
-            messages.success(request, f"{nombre_zapato} (Talla {talla}) eliminado del carrito")
+    # Use transaction with select_for_update to prevent race conditions
+    try:
+        with transaction.atomic():
+            if action == "increase":
+                # Lock the size row to prevent concurrent modifications
+                talla_obj = (
+                    TallaZapato.objects.select_for_update()
+                    .filter(zapato=zapato_carrito.zapato, talla=zapato_carrito.talla)
+                    .first()
+                )
+                max_stock = talla_obj.stock if talla_obj else 0
+
+                if zapato_carrito.cantidad >= max_stock:
+                    messages.warning(
+                        request,
+                        f"No puedes añadir más unidades de {zapato_carrito.zapato.nombre} (Talla {zapato_carrito.talla}).",
+                    )
+                else:
+                    zapato_carrito.cantidad += 1
+                    zapato_carrito.save()
+                    messages.success(request, f"Cantidad actualizada a {zapato_carrito.cantidad}")
+            elif action == "decrease":
+                if zapato_carrito.cantidad > 1:
+                    zapato_carrito.cantidad -= 1
+                    zapato_carrito.save()
+                    messages.success(request, f"Cantidad actualizada a {zapato_carrito.cantidad}")
+                else:
+                    # Si la cantidad es 1, eliminar el item
+                    nombre_zapato = zapato_carrito.zapato.nombre
+                    talla = zapato_carrito.talla
+                    zapato_carrito.delete()
+                    messages.success(request, f"{nombre_zapato} (Talla {talla}) eliminado del carrito")
+
+    except Exception as e:
+        messages.error(request, f"Error al actualizar la cantidad: {str(e)}")
 
     return redirect("carrito:view_carrito")
 
@@ -174,7 +205,15 @@ def checkout_from_carrito(request):
         messages.error(request, "No se encontró un carrito.")
         return redirect("carrito:view_carrito")
 
-    # Get cart items
+    # Validate and clean cart BEFORE proceeding to checkout
+    validation_messages = validate_and_clean_cart(carrito)
+    for msg in validation_messages:
+        if msg["type"] == "warning":
+            messages.warning(request, msg["message"])
+        elif msg["type"] == "info":
+            messages.info(request, msg["message"])
+
+    # Get cart items (after validation)
     zapatos_carrito = carrito.zapatos.all()
 
     if not zapatos_carrito.exists():
@@ -184,19 +223,6 @@ def checkout_from_carrito(request):
     # Convert cart items to the format expected by order creation
     cart_items = []
     for item in zapatos_carrito:
-        if not item.zapato.estaDisponible:
-            messages.error(request, f"El producto {item.zapato.nombre} ya no está disponible.")
-            return redirect("carrito:view_carrito")
-
-        # Verify stock for this size
-        talla_obj = item.zapato.tallas.filter(talla=item.talla, stock__gte=item.cantidad).first()
-        if not talla_obj:
-            messages.error(
-                request,
-                f"No hay suficiente stock para {item.zapato.nombre} (Talla {item.talla}).",
-            )
-            return redirect("carrito:view_carrito")
-
         cart_items.append(
             {
                 "zapato": item.zapato,
@@ -205,91 +231,22 @@ def checkout_from_carrito(request):
             }
         )
 
-    prices = calculate_order_prices(cart_items)
+    # Use the unified order creation utility
+    order, success, error_message = create_order_from_items(cart_items, request.user, request)
 
-    max_retries = 5
-    order = None
-    for attempt in range(max_retries):
-        codigo_pedido = generate_order_code()
-        try:
-            with transaction.atomic():
-                reserve_stock(cart_items)
-
-                order = Order.objects.create(
-                    codigo_pedido=codigo_pedido,
-                    usuario=request.user if request.user.is_authenticated else None,
-                    subtotal=prices["subtotal"],
-                    impuestos=prices["impuestos"],
-                    coste_entrega=prices["coste_entrega"],
-                    total=prices["total"],
-                    metodo_pago="tarjeta",
-                    pagado=False,
-                    nombre="",
-                    apellido="",
-                    email="",
-                    telefono="",
-                    direccion_envio="",
-                    ciudad_envio="",
-                    codigo_postal_envio="",
-                    direccion_facturacion="",
-                    ciudad_facturacion="",
-                    codigo_postal_facturacion="",
-                )
-                break
-        except IntegrityError:
-            if attempt == max_retries - 1:
-                messages.error(
-                    request,
-                    "No se pudo generar un código de pedido único. Por favor, inténtalo de nuevo.",
-                )
-                return redirect("carrito:view_carrito")
-            continue
-        except ValueError as e:
-            messages.error(request, str(e))
-            return redirect("carrito:view_carrito")
-
-    if order is None:
-        messages.error(request, "Error al crear el pedido.")
+    if not success:
+        messages.error(request, error_message)
         return redirect("carrito:view_carrito")
 
-    try:
-        # Create order items
-        for item in cart_items:
-            zapato = item["zapato"]
-            precio_unitario = Decimal(str(zapato.precioOferta)) if zapato.precioOferta else Decimal(str(zapato.precio))
-            cantidad = item["cantidad"]
+    # Clear the cart after successfully creating the order
+    carrito.zapatos.all().delete()
 
-            descuento = Decimal("0.00")
-            if zapato.precioOferta:
-                precio_original = Decimal(str(zapato.precio))
-                descuento = (precio_original - precio_unitario) * cantidad
+    env_config = getEnvConfig()
+    messages.success(
+        request,
+        f"Tu pedido ha sido creado. Los artículos están reservados durante {env_config.get_order_reservation_minutes()} minutos. "
+        f"Tienes {env_config.CHECKOUT_FORM_WINDOW_MINUTES} minutos para completar el formulario "
+        f"y {env_config.PAYMENT_WINDOW_MINUTES} minutos adicionales para realizar el pago.",
+    )
 
-            OrderItem.objects.create(
-                pedido=order,
-                zapato=zapato,
-                talla=item["talla"],
-                cantidad=cantidad,
-                precio_unitario=precio_unitario,
-                total=precio_unitario * cantidad,
-                descuento=descuento,
-            )
-
-        request.session["checkout_order_id"] = order.id
-        request.session["checkout_descuento"] = str(prices["descuento"])
-
-        # Clear the cart after creating the order
-        carrito.zapatos.all().delete()
-
-        env_config = getEnvConfig()
-        messages.success(
-            request,
-            f"Tu pedido ha sido creado. Los artículos están reservados durante {env_config.get_order_reservation_minutes()} minutos. "
-            f"Tienes {env_config.CHECKOUT_FORM_WINDOW_MINUTES} minutos para completar el formulario "
-            f"y {env_config.PAYMENT_WINDOW_MINUTES} minutos adicionales para realizar el pago.",
-        )
-
-        return redirect("orders:checkout_contact")
-
-    except ValueError as e:
-        messages.error(request, str(e))
-        return redirect("carrito:view_carrito")
+    return redirect("orders:checkout_contact")
