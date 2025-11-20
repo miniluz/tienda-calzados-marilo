@@ -1,4 +1,7 @@
 from django.test import TestCase
+
+from catalog.models import Marca, TallaZapato, Zapato
+
 from .models import Carrito, ZapatoCarrito
 
 
@@ -9,19 +12,27 @@ class CarritoModelTest(TestCase):
 
     def test_cart_creation(self):
         self.assertIsInstance(self.cart, Carrito)
-        self.assertEqual(self.cart.items.count(), 0)
+        self.assertEqual(self.cart.zapatos.count(), 0)
 
 
 class ZapatoCarritoModelTest(TestCase):
 
     def setUp(self):
         self.carrito = Carrito.objects.create(usuario=None)
-        self.zapato_carrito = ZapatoCarrito.objects.create(carrito=self.carrito, zapato="Test Product", cantidad=1)
+        # Create proper Zapato instance
+        self.marca = Marca.objects.create(nombre="Test Marca")
+        self.zapato = Zapato.objects.create(
+            nombre="Test Product", precio=100, genero="Unisex", marca=self.marca, estaDisponible=True
+        )
+        TallaZapato.objects.create(zapato=self.zapato, talla=42, stock=10)
+        self.zapato_carrito = ZapatoCarrito.objects.create(
+            carrito=self.carrito, zapato=self.zapato, talla=42, cantidad=1
+        )
 
     def test_cart_item_creation(self):
         self.assertIsInstance(self.zapato_carrito, ZapatoCarrito)
         self.assertEqual(self.zapato_carrito.carrito, self.carrito)
-        self.assertEqual(self.zapato_carrito.zapato, "Test Product")
+        self.assertEqual(self.zapato_carrito.zapato, self.zapato)
         self.assertEqual(self.zapato_carrito.cantidad, 1)
 
     def test_cart_item_quantity_update(self):
