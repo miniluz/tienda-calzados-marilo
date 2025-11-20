@@ -281,6 +281,82 @@ class ConcurrentPurchaseTests(TransactionTestCase):
         # Stock should be exactly 0 or 5 (one succeeded, one failed cleanly)
         self.assertIn(self.talla.stock, [0, 5])
 
+    def test_concurrent_cleanup_prevents_double_stock_restoration(self):
+        """Two simultaneous cleanups should not double-restore stock"""
+        # Set stock to 10
+        self.talla.stock = 10
+        self.talla.save()
+
+        # Create an expired order with 3 items
+        order = Order.objects.create(
+            codigo_pedido="CONCURRENT_TEST",
+            metodo_pago="tarjeta",
+            pagado=False,
+            subtotal=300,
+            impuestos=63,
+            coste_entrega=5,
+            total=368,
+            nombre="Test",
+            apellido="User",
+            email="test@test.com",
+            telefono="123456789",
+            direccion_envio="Test Address",
+            ciudad_envio="Test City",
+            codigo_postal_envio="12345",
+            direccion_facturacion="Test Address",
+            ciudad_facturacion="Test City",
+            codigo_postal_facturacion="12345",
+        )
+
+        OrderItem.objects.create(
+            pedido=order,
+            zapato=self.zapato,
+            talla=42,
+            cantidad=3,
+            precio_unitario=100,
+            total=300,
+        )
+
+        # Make order expired (25 minutes old)
+        order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        order.save()
+
+        # Deduct stock to simulate reservation
+        self.talla.stock -= 3
+        self.talla.save()
+        self.assertEqual(self.talla.stock, 7)
+
+        cleanup_results = []
+
+        def run_cleanup():
+            """Run cleanup_expired_orders in a thread"""
+            try:
+                connection.close()
+                result = cleanup_expired_orders()
+                cleanup_results.append(result)
+            finally:
+                connection.close()
+
+        # Run cleanup in two threads simultaneously
+        thread1 = threading.Thread(target=run_cleanup)
+        thread2 = threading.Thread(target=run_cleanup)
+
+        thread1.start()
+        thread2.start()
+        thread1.join()
+        thread2.join()
+
+        # Verify stock is restored exactly once (not doubled)
+        self.talla.refresh_from_db()
+        self.assertEqual(self.talla.stock, 10, "Stock should be restored to original value, not doubled")
+
+        # Verify order is deleted
+        self.assertFalse(Order.objects.filter(codigo_pedido="CONCURRENT_TEST").exists())
+
+        # At least one cleanup should have processed the order
+        total_deleted = sum(r["deleted_count"] for r in cleanup_results)
+        self.assertEqual(total_deleted, 1, "Order should be deleted exactly once")
+
 
 class CleanupTests(TestCase):
     """Test cleanup of expired orders"""

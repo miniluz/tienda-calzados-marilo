@@ -566,6 +566,7 @@ def create_order_from_items(cart_items, user, request):
         return order, False, f"Error al crear los items del pedido: {str(e)}"
 
 
+@transaction.atomic
 def cleanup_expired_orders():
     """
     Clean up unpaid orders that are older than the total reservation time.
@@ -573,6 +574,9 @@ def cleanup_expired_orders():
     Default: 10 + 5 + 5 = 20 minutes
 
     Restores stock and deletes the orders.
+
+    Uses select_for_update() to prevent concurrent cleanups from double-restoring stock.
+    If another cleanup is in progress, this will block until it completes.
 
     Returns:
         Dict with:
@@ -599,7 +603,8 @@ def cleanup_expired_orders():
 
     expiration_time = timezone.now() - timezone.timedelta(minutes=reservation_minutes)
 
-    expired_orders = Order.objects.filter(pagado=False, fecha_creacion__lt=expiration_time)
+    # Lock expired orders to prevent concurrent cleanup from double-restoring stock
+    expired_orders = Order.objects.select_for_update().filter(pagado=False, fecha_creacion__lt=expiration_time)
 
     deleted_count = 0
     restored_items_count = 0

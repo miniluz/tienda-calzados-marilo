@@ -584,6 +584,11 @@ class CheckoutPaymentView(View):
                     stripe.api_key = stripe_secret
                     try:
                         # Create a single-line item for the whole order
+                        # Calculate expiration time (PAYMENT_WINDOW_MINUTES from now)
+                        expires_at = int(
+                            (timezone.now() + timezone.timedelta(minutes=env_config.PAYMENT_WINDOW_MINUTES)).timestamp()
+                        )
+
                         session = stripe.checkout.Session.create(
                             payment_method_types=["card"],
                             line_items=[
@@ -598,6 +603,7 @@ class CheckoutPaymentView(View):
                             ],
                             mode="payment",
                             metadata={"order_id": str(order.id), "codigo_pedido": order.codigo_pedido},
+                            expires_at=expires_at,
                             # Include the Checkout Session id so we can retrieve status on user return
                             success_url=(
                                 request.build_absolute_uri(reverse("orders:stripe_return"))
