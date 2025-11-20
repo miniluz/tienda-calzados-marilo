@@ -657,6 +657,7 @@ class CheckoutPaymentView(View):
 class StripeWebhookView(View):
     """Endpoint to receive Stripe webhooks and mark orders as paid when appropriate."""
 
+    @transaction.atomic
     def post(self, request):
         payload = request.body
         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
@@ -685,13 +686,19 @@ class StripeWebhookView(View):
 
         if order_id:
             try:
-                order = Order.objects.get(id=int(order_id))
+                # Use select_for_update() to prevent race conditions with concurrent webhooks
+                # This acquires a row-level lock until the transaction commits
+                order = Order.objects.select_for_update().get(id=int(order_id))
                 if not order.pagado:
                     order.pagado = True
                     order.save()
                     # send confirmation email asynchronously if desired
                     send_order_confirmation_email(order)
+            except (ValueError, TypeError):
+                # Invalid order_id format (not a valid integer), skip gracefully
+                pass
             except Order.DoesNotExist:
+                # Order not found, skip gracefully (idempotent)
                 pass
 
         return JsonResponse({"received": True})
@@ -776,6 +783,7 @@ class StripeReturnView(View):
         context = {"order": order}
         return render(request, "orders/validating.html", context)
 
+    @transaction.atomic
     def post(self, request):
         # Validate that the POST comes from Stripe using webhook secret
         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
@@ -795,12 +803,16 @@ class StripeReturnView(View):
 
         if order_id:
             try:
-                order = Order.objects.get(id=int(order_id))
+                # Use select_for_update() to prevent race conditions
+                order = Order.objects.select_for_update().get(id=int(order_id))
                 if not order.pagado:
                     order.pagado = True
                     order.save()
                     send_order_confirmation_email(order)
                 return redirect("orders:order_success", codigo=order.codigo_pedido)
+            except (ValueError, TypeError):
+                # Invalid order_id format
+                return HttpResponse(status=400)
             except Order.DoesNotExist:
                 return HttpResponse(status=404)
 
