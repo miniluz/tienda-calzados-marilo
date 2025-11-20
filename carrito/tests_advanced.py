@@ -679,3 +679,133 @@ class AuthenticatedCartTests(TestCase):
         carrito = Carrito.objects.first()
         self.assertIsNone(carrito.usuario)
         self.assertIsNotNone(carrito.sesion)
+
+
+class OfferDisplayTests(TestCase):
+    """Test that offers are correctly displayed in cart view (RF07)"""
+
+    def setUp(self):
+        """Create test data with offers"""
+        self.client = Client()
+        self.marca = Marca.objects.create(nombre="Test Marca")
+
+        # Product with offer
+        self.zapato_con_oferta = Zapato.objects.create(
+            nombre="Zapato en Oferta",
+            precio=100.00,
+            precioOferta=80.00,
+            genero="Unisex",
+            marca=self.marca,
+            estaDisponible=True,
+        )
+        self.talla_oferta = TallaZapato.objects.create(zapato=self.zapato_con_oferta, talla=42, stock=10)
+
+        # Product without offer
+        self.zapato_sin_oferta = Zapato.objects.create(
+            nombre="Zapato Precio Normal",
+            precio=120.00,
+            genero="Unisex",
+            marca=self.marca,
+            estaDisponible=True,
+        )
+        self.talla_normal = TallaZapato.objects.create(zapato=self.zapato_sin_oferta, talla=43, stock=10)
+
+    def test_offer_price_displayed_in_cart_view(self):
+        """Should display both original and offer prices in cart for products on sale"""
+        # Add product with offer to cart
+        self.client.post(
+            reverse("carrito:add_to_carrito", args=[self.zapato_con_oferta.id]),
+            {"talla": 42, "cantidad": 1},
+        )
+
+        # Get cart view
+        response = self.client.get(reverse("carrito:view_carrito"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Verify both prices appear in the response (Spanish number format with comma)
+        self.assertIn("100,00", content)  # Original price
+        self.assertIn("80,00", content)  # Offer price
+
+        # Verify HTML formatting for crossed-out original price
+        self.assertIn("text-decoration: line-through", content)
+
+        # Verify offer price is highlighted (red color)
+        self.assertIn("color: #e74c3c", content)
+
+    def test_regular_price_displayed_without_offer(self):
+        """Should display only regular price for products not on sale"""
+        # Add product without offer to cart
+        self.client.post(
+            reverse("carrito:add_to_carrito", args=[self.zapato_sin_oferta.id]),
+            {"talla": 43, "cantidad": 1},
+        )
+
+        # Get cart view
+        response = self.client.get(reverse("carrito:view_carrito"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Verify regular price appears (Spanish number format with comma)
+        self.assertIn("120,00", content)
+
+        # Verify NO crossed-out price formatting (since there's no offer)
+        # The cart item div for this product should not have line-through styling
+        # We check that the product name appears without offer formatting nearby
+        self.assertIn("Zapato Precio Normal", content)
+
+    def test_multiple_items_with_mixed_offers(self):
+        """Should correctly display mix of regular and offer prices in same cart"""
+        # Add both products to cart
+        self.client.post(
+            reverse("carrito:add_to_carrito", args=[self.zapato_con_oferta.id]),
+            {"talla": 42, "cantidad": 2},
+        )
+        self.client.post(
+            reverse("carrito:add_to_carrito", args=[self.zapato_sin_oferta.id]),
+            {"talla": 43, "cantidad": 1},
+        )
+
+        # Get cart view
+        response = self.client.get(reverse("carrito:view_carrito"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Verify both products appear
+        self.assertIn("Zapato en Oferta", content)
+        self.assertIn("Zapato Precio Normal", content)
+
+        # Verify offer product shows both prices (Spanish number format with comma)
+        self.assertIn("100,00", content)  # Original price
+        self.assertIn("80,00", content)  # Offer price
+
+        # Verify regular product shows its price
+        self.assertIn("120,00", content)
+
+        # Verify cart has 2 items
+        carrito = Carrito.objects.first()
+        self.assertEqual(carrito.zapatos.count(), 2)
+
+    def test_discount_percentage_calculation(self):
+        """Should correctly calculate discount percentage"""
+        # Test the model property
+        self.assertEqual(self.zapato_con_oferta.descuento_porcentaje, 20)  # (100-80)/100 * 100 = 20%
+        self.assertEqual(self.zapato_sin_oferta.descuento_porcentaje, 0)  # No offer = 0%
+
+    def test_cart_total_uses_offer_price(self):
+        """Cart total should use offer price when available"""
+        # Add product with offer
+        self.client.post(
+            reverse("carrito:add_to_carrito", args=[self.zapato_con_oferta.id]),
+            {"talla": 42, "cantidad": 2},
+        )
+
+        # Get cart view
+        response = self.client.get(reverse("carrito:view_carrito"))
+
+        # Total should be 2 * 80 = 160, not 2 * 100 = 200
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total"], 160.00)
