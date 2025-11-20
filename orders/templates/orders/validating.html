@@ -2,20 +2,25 @@
 
 {% block checkout_content %}
 <div class="text-center mt-5">
-    <h2>Validando el pago</h2>
-    <p>Estamos comprobando el estado del pago. Serás redirigido en unos segundos.</p>
-    <p id="countdown">5</p>
-    <p>
-        <a href="{% url 'orders:stripe_cancel' %}" class="btn btn-danger">Cancelar</a>
+    <h2>Procesando pago...</h2>
+    <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p>Estamos verificando tu pago con nuestro procesador.</p>
+    <p>Esta página se actualizará automáticamente en <span id="countdown">3</span> segundos.</p>
+    <p class="text-muted small">No cierres esta ventana.</p>
+    <p class="mt-4">
+        <a href="{% url 'orders:stripe_cancel' %}" class="btn btn-outline-secondary">Cancelar</a>
     </p>
 </div>
 
 <script>
-let t = 5;
+// Auto-reload every 3 seconds to check payment status
+let t = 3;
 const el = document.getElementById('countdown');
 const reload = () => {
     if (t <= 0) {
-        // reload the page to check status again
+        // Reload the page to check if webhook has marked order as paid
         window.location.reload();
     } else {
         el.textContent = t;

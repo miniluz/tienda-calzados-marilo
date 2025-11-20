@@ -5,7 +5,7 @@ import stripe
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -197,11 +197,12 @@ class CheckoutContactView(View):
         form = ContactInfoForm(request.POST)
 
         if form.is_valid():
-            order.nombre = form.cleaned_data["nombre"]
-            order.apellido = form.cleaned_data["apellido"]
-            order.email = form.cleaned_data["email"]
-            order.telefono = form.cleaned_data["telefono"]
-            order.save()
+            with transaction.atomic():
+                order.nombre = form.cleaned_data["nombre"]
+                order.apellido = form.cleaned_data["apellido"]
+                order.email = form.cleaned_data["email"]
+                order.telefono = form.cleaned_data["telefono"]
+                order.save()
 
             return redirect("orders:checkout_address")
 
@@ -289,17 +290,18 @@ class CheckoutAddressView(View):
         billing_form = BillingAddressForm(request.POST)
 
         if shipping_form.is_valid() and billing_form.is_valid():
-            # Save shipping address
-            order.direccion_envio = shipping_form.cleaned_data["direccion_envio"]
-            order.ciudad_envio = shipping_form.cleaned_data["ciudad_envio"]
-            order.codigo_postal_envio = shipping_form.cleaned_data["codigo_postal_envio"]
+            with transaction.atomic():
+                # Save shipping address
+                order.direccion_envio = shipping_form.cleaned_data["direccion_envio"]
+                order.ciudad_envio = shipping_form.cleaned_data["ciudad_envio"]
+                order.codigo_postal_envio = shipping_form.cleaned_data["codigo_postal_envio"]
 
-            # Save billing address
-            order.direccion_facturacion = billing_form.cleaned_data["direccion_facturacion"]
-            order.ciudad_facturacion = billing_form.cleaned_data["ciudad_facturacion"]
-            order.codigo_postal_facturacion = billing_form.cleaned_data["codigo_postal_facturacion"]
+                # Save billing address
+                order.direccion_facturacion = billing_form.cleaned_data["direccion_facturacion"]
+                order.ciudad_facturacion = billing_form.cleaned_data["ciudad_facturacion"]
+                order.codigo_postal_facturacion = billing_form.cleaned_data["codigo_postal_facturacion"]
 
-            order.save()
+                order.save()
 
             return redirect("orders:checkout_payment")
 
@@ -378,10 +380,11 @@ class CheckoutShippingView(View):
         form = ShippingAddressForm(request.POST)
 
         if form.is_valid():
-            order.direccion_envio = form.cleaned_data["direccion_envio"]
-            order.ciudad_envio = form.cleaned_data["ciudad_envio"]
-            order.codigo_postal_envio = form.cleaned_data["codigo_postal_envio"]
-            order.save()
+            with transaction.atomic():
+                order.direccion_envio = form.cleaned_data["direccion_envio"]
+                order.ciudad_envio = form.cleaned_data["ciudad_envio"]
+                order.codigo_postal_envio = form.cleaned_data["codigo_postal_envio"]
+                order.save()
 
             return redirect("orders:checkout_billing")
 
@@ -459,10 +462,11 @@ class CheckoutBillingView(View):
         form = BillingAddressForm(request.POST)
 
         if form.is_valid():
-            order.direccion_facturacion = form.cleaned_data["direccion_facturacion"]
-            order.ciudad_facturacion = form.cleaned_data["ciudad_facturacion"]
-            order.codigo_postal_facturacion = form.cleaned_data["codigo_postal_facturacion"]
-            order.save()
+            with transaction.atomic():
+                order.direccion_facturacion = form.cleaned_data["direccion_facturacion"]
+                order.ciudad_facturacion = form.cleaned_data["ciudad_facturacion"]
+                order.codigo_postal_facturacion = form.cleaned_data["codigo_postal_facturacion"]
+                order.save()
 
             return redirect("orders:checkout_payment")
 
@@ -691,12 +695,13 @@ class StripeWebhookView(View):
 
         if order_id:
             try:
-                order = Order.objects.get(id=int(order_id))
-                if not order.pagado:
-                    order.pagado = True
-                    order.save()
-                    # send confirmation email asynchronously if desired
-                    send_order_confirmation_email(order)
+                with transaction.atomic():
+                    order = Order.objects.select_for_update().get(id=int(order_id))
+                    if not order.pagado:
+                        order.pagado = True
+                        order.save()
+                        # send confirmation email asynchronously if desired
+                        send_order_confirmation_email(order)
             except Order.DoesNotExist:
                 pass
 
@@ -706,11 +711,11 @@ class StripeWebhookView(View):
 class StripeReturnView(View):
     """Handle user redirect from Stripe Checkout.
 
-    GET: If order is already paid -> redirect to existing success page.
-         Otherwise render a small validating page that reloads after 5s.
+    This view only checks if the order has been marked as paid by the webhook.
+    It does NOT call Stripe API or mark orders as paid itself.
 
-    POST: Some gateways may POST back. If Stripe posts here, verify signature
-          using webhook secret and mark order paid, then redirect to success.
+    The webhook (StripeWebhookView) is responsible for marking orders as paid.
+    This view just polls the database and redirects when payment is confirmed.
     """
 
     def get(self, request):
@@ -722,7 +727,7 @@ class StripeReturnView(View):
             except Order.DoesNotExist:
                 order = None
 
-        # fallback: allow codigo in querystring
+        # Fallback: allow codigo in querystring
         codigo = request.GET.get("codigo")
         if not order and codigo:
             try:
@@ -730,87 +735,25 @@ class StripeReturnView(View):
             except Order.DoesNotExist:
                 order = None
 
-        # If we have a session id from Stripe, check Stripe directly to avoid loop
-        session_id = request.GET.get("session_id")
-        stripe_secret = os.getenv("STRIPE_SECRET_KEY")
-        if session_id and stripe_secret:
-            try:
-                stripe.api_key = stripe_secret
-                checkout_session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent"])
-                # retrieve metadata that we set when creating the session
-                metadata = checkout_session.get("metadata") or {}
-                # payment_status can be 'paid' when succeeded
-                payment_status = checkout_session.get("payment_status")
-
-                # try to find order from metadata if not available from session
-                if not order:
-                    order_id_meta = metadata.get("order_id")
-                    if order_id_meta:
-                        try:
-                            order = Order.objects.get(id=int(order_id_meta))
-                        except Order.DoesNotExist:
-                            order = None
-
-                # If Stripe reports the session as paid, mark the order paid and redirect to success
-                if payment_status == "paid":
-                    if order and not order.pagado:
-                        order.pagado = True
-                        order.save()
-                        send_order_confirmation_email(order)
-                        # clear the checkout session markers
-                        if "checkout_order_id" in request.session:
-                            try:
-                                del request.session["checkout_order_id"]
-                            except KeyError:
-                                pass
-                        if "checkout_descuento" in request.session:
-                            try:
-                                del request.session["checkout_descuento"]
-                            except KeyError:
-                                pass
-                    if order:
-                        return redirect("orders:order_success", codigo=order.codigo_pedido)
-
-            except Exception:
-                # If Stripe API call fails, fall back to existing logic (render validating)
-                pass
-
+        # If order is paid (webhook has already processed it), redirect to success
         if order and order.pagado:
+            # Clear the checkout session markers
+            if "checkout_order_id" in request.session:
+                try:
+                    del request.session["checkout_order_id"]
+                except KeyError:
+                    pass
+            if "checkout_descuento" in request.session:
+                try:
+                    del request.session["checkout_descuento"]
+                except KeyError:
+                    pass
             return redirect("orders:order_success", codigo=order.codigo_pedido)
 
-        # Not yet paid: render validating page that reloads to this view
+        # Not yet paid: render validating page that auto-reloads
+        # The page will reload and check again until webhook marks order as paid
         context = {"order": order}
         return render(request, "orders/validating.html", context)
-
-    def post(self, request):
-        # Validate that the POST comes from Stripe using webhook secret
-        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
-        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-        if not webhook_secret or not sig_header:
-            return HttpResponseForbidden("Missing or invalid signature")
-
-        payload = request.body
-        try:
-            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-        except Exception:
-            return HttpResponseForbidden("Invalid signature")
-
-        data_obj = event.get("data", {}).get("object", {})
-        metadata = data_obj.get("metadata") or {}
-        order_id = metadata.get("order_id")
-
-        if order_id:
-            try:
-                order = Order.objects.get(id=int(order_id))
-                if not order.pagado:
-                    order.pagado = True
-                    order.save()
-                    send_order_confirmation_email(order)
-                return redirect("orders:order_success", codigo=order.codigo_pedido)
-            except Order.DoesNotExist:
-                return HttpResponse(status=404)
-
-        return HttpResponse(status=400)
 
 
 class StripeCancelView(View):
@@ -818,21 +761,6 @@ class StripeCancelView(View):
 
     def get(self, request):
         return render(request, "orders/payment_cancel.html")
-
-    def _get_order(self, request):
-        order_id = request.session.get("checkout_order_id")
-        if not order_id:
-            return None
-        try:
-            order = Order.objects.get(id=order_id, pagado=False)
-
-            if request.user.is_authenticated and order.usuario is not None:
-                if order.usuario != request.user:
-                    return None
-
-            return order
-        except Order.DoesNotExist:
-            return None
 
 
 class OrderSuccessView(View):

@@ -190,6 +190,7 @@ def restore_stock(order):
 
     for item in order.items.all():
         try:
+            # Use select_for_update to prevent concurrent stock modifications
             talla_zapato = TallaZapato.objects.select_for_update().get(zapato=item.zapato, talla=item.talla)
             talla_zapato.stock += item.cantidad
             talla_zapato.save()

@@ -179,16 +179,22 @@ class CustomerDeleteView(View):
         return render(request, self.template_name, {"user": user, "customer": customer})
 
     def post(self, request, user_id):
-        user = get_object_or_404(User, pk=user_id)
         try:
-            user.customer
-        except Customer.DoesNotExist:
-            messages.error(request, "Este usuario no es un cliente.")
+            with transaction.atomic():
+                user = get_object_or_404(User, pk=user_id)
+                try:
+                    user.customer
+                except Customer.DoesNotExist:
+                    messages.error(request, "Este usuario no es un cliente.")
+                    return redirect("customer_list")
+
+                user_name = f"{user.first_name} {user.last_name}"
+                user.delete()  # Cascade delete is protected by transaction
+                messages.success(request, f"Cliente {user_name} eliminado correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar el cliente: {str(e)}")
             return redirect("customer_list")
 
-        user_name = f"{user.first_name} {user.last_name}"
-        user.delete()
-        messages.success(request, f"Cliente {user_name} eliminado correctamente.")
         return redirect("customer_list")
 
 
@@ -283,15 +289,21 @@ class AdminDeleteView(View):
         return render(request, self.template_name, {"admin_user": user})
 
     def post(self, request, user_id):
-        user = get_object_or_404(User, pk=user_id, is_staff=True)
+        try:
+            with transaction.atomic():
+                user = get_object_or_404(User, pk=user_id, is_staff=True)
 
-        if user.id == request.user.id:
-            messages.error(request, "No puedes eliminar tu propia cuenta de administrador.")
+                if user.id == request.user.id:
+                    messages.error(request, "No puedes eliminar tu propia cuenta de administrador.")
+                    return redirect("admin_list")
+
+                user_name = f"{user.first_name} {user.last_name}"
+                user.delete()  # Cascade delete is protected by transaction
+                messages.success(request, f"Administrador {user_name} eliminado correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar el administrador: {str(e)}")
             return redirect("admin_list")
 
-        user_name = f"{user.first_name} {user.last_name}"
-        user.delete()
-        messages.success(request, f"Administrador {user_name} eliminado correctamente.")
         return redirect("admin_list")
 
 
@@ -341,7 +353,8 @@ class ZapatoAdminDetailView(View):
 
         if form.is_valid():
             try:
-                form.save()
+                with transaction.atomic():
+                    form.save()
                 messages.success(request, "Zapato actualizado correctamente.")
                 return redirect("zapato_admin_detail", zapato_id=zapato.id)
             except Exception:
@@ -406,49 +419,56 @@ class ZapatoStockEditView(View):
         action = request.POST.get("action")
 
         try:
-            if action == "add":
-                talla_id = request.POST.get("talla_id")
-                amount = int(request.POST.get("amount", 1))
-                talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
+            with transaction.atomic():
+                if action == "add":
+                    talla_id = request.POST.get("talla_id")
+                    amount = int(request.POST.get("amount", 1))
+                    # Use select_for_update to prevent race conditions
+                    talla = get_object_or_404(TallaZapato.objects.select_for_update(), pk=talla_id, zapato=zapato)
 
-                talla.stock = F("stock") + amount
-                talla.save()
-                talla.refresh_from_db()
-
-                messages.success(request, f"Se añadieron {amount} unidades a la talla {talla.talla}.")
-
-            elif action == "remove":
-                talla_id = request.POST.get("talla_id")
-                amount = int(request.POST.get("amount", 1))
-                talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
-
-                if talla.stock >= amount:
-                    talla.stock = F("stock") - amount
+                    talla.stock = F("stock") + amount
                     talla.save()
                     talla.refresh_from_db()
-                    messages.success(request, f"Se quitaron {amount} unidades de la talla {talla.talla}.")
+
+                    messages.success(request, f"Se añadieron {amount} unidades a la talla {talla.talla}.")
+
+                elif action == "remove":
+                    talla_id = request.POST.get("talla_id")
+                    amount = int(request.POST.get("amount", 1))
+                    # Use select_for_update to lock the row
+                    talla = get_object_or_404(TallaZapato.objects.select_for_update(), pk=talla_id, zapato=zapato)
+
+                    # CRITICAL FIX: Check stock after locking, before using F()
+                    # This prevents TOCTOU race condition
+                    if talla.stock < amount:
+                        messages.error(request, f"No hay suficiente stock. Stock actual: {talla.stock}")
+                    else:
+                        talla.stock = F("stock") - amount
+                        talla.save()
+                        talla.refresh_from_db()
+                        messages.success(request, f"Se quitaron {amount} unidades de la talla {talla.talla}.")
+
+                elif action == "delete":
+                    talla_id = request.POST.get("talla_id")
+                    # Lock before deleting
+                    talla = get_object_or_404(TallaZapato.objects.select_for_update(), pk=talla_id, zapato=zapato)
+                    talla_num = talla.talla
+                    talla.delete()
+                    messages.success(request, f"Talla {talla_num} eliminada correctamente.")
+
+                elif action == "create":
+                    talla_num = int(request.POST.get("talla"))
+                    stock_inicial = int(request.POST.get("stock_inicial", 0))
+
+                    # Check within transaction to prevent race
+                    if zapato.tallas.filter(talla=talla_num).exists():
+                        messages.error(request, f"La talla {talla_num} ya existe para este zapato.")
+                    else:
+                        TallaZapato.objects.create(zapato=zapato, talla=talla_num, stock=stock_inicial)
+                        messages.success(request, f"Talla {talla_num} creada con {stock_inicial} unidades.")
+
                 else:
-                    messages.error(request, f"No hay suficiente stock. Stock actual: {talla.stock}")
-
-            elif action == "delete":
-                talla_id = request.POST.get("talla_id")
-                talla = get_object_or_404(TallaZapato, pk=talla_id, zapato=zapato)
-                talla_num = talla.talla
-                talla.delete()
-                messages.success(request, f"Talla {talla_num} eliminada correctamente.")
-
-            elif action == "create":
-                talla_num = int(request.POST.get("talla"))
-                stock_inicial = int(request.POST.get("stock_inicial", 0))
-
-                if zapato.tallas.filter(talla=talla_num).exists():
-                    messages.error(request, f"La talla {talla_num} ya existe para este zapato.")
-                else:
-                    TallaZapato.objects.create(zapato=zapato, talla=talla_num, stock=stock_inicial)
-                    messages.success(request, f"Talla {talla_num} creada con {stock_inicial} unidades.")
-
-            else:
-                messages.error(request, "Acción no válida.")
+                    messages.error(request, "Acción no válida.")
 
         except ValueError:
             messages.error(request, "Valores inválidos en el formulario.")
@@ -505,7 +525,8 @@ class MarcaCreateView(View):
 
         if form.is_valid():
             try:
-                marca = form.save()
+                with transaction.atomic():
+                    marca = form.save()
                 messages.success(request, f"Marca {marca.nombre} creada correctamente.")
                 return redirect("marca_list")
             except Exception:
@@ -531,7 +552,8 @@ class MarcaEditView(View):
 
         if form.is_valid():
             try:
-                marca = form.save()
+                with transaction.atomic():
+                    marca = form.save()
                 messages.success(request, f"Marca {marca.nombre} actualizada correctamente.")
                 return redirect("marca_list")
             except Exception:
@@ -555,15 +577,19 @@ class MarcaDeleteView(View):
         return render(request, self.template_name, {"marca": marca, "zapatos_count": zapatos_count})
 
     def post(self, request, marca_id):
-        marca = get_object_or_404(Marca, pk=marca_id)
+        with transaction.atomic():
+            # Lock the marca to prevent concurrent modifications
+            marca = get_object_or_404(Marca.objects.select_for_update(), pk=marca_id)
 
-        if marca.zapatos.exists():
-            messages.error(request, "No se puede eliminar la marca porque tiene zapatos asociados.")
-            return redirect("marca_list")
+            # Check within transaction to prevent TOCTOU race
+            if marca.zapatos.exists():
+                messages.error(request, "No se puede eliminar la marca porque tiene zapatos asociados.")
+                return redirect("marca_list")
 
-        marca_nombre = marca.nombre
-        marca.delete()
-        messages.success(request, f"Marca {marca_nombre} eliminada correctamente.")
+            marca_nombre = marca.nombre
+            marca.delete()
+            messages.success(request, f"Marca {marca_nombre} eliminada correctamente.")
+
         return redirect("marca_list")
 
 
@@ -596,7 +622,8 @@ class CategoriaCreateView(View):
 
         if form.is_valid():
             try:
-                categoria = form.save()
+                with transaction.atomic():
+                    categoria = form.save()
                 messages.success(request, f"Categoría {categoria.nombre} creada correctamente.")
                 return redirect("categoria_list")
             except Exception:
@@ -622,7 +649,8 @@ class CategoriaEditView(View):
 
         if form.is_valid():
             try:
-                categoria = form.save()
+                with transaction.atomic():
+                    categoria = form.save()
                 messages.success(request, f"Categoría {categoria.nombre} actualizada correctamente.")
                 return redirect("categoria_list")
             except Exception:
@@ -646,11 +674,18 @@ class CategoriaDeleteView(View):
         return render(request, self.template_name, {"categoria": categoria, "zapatos_count": zapatos_count})
 
     def post(self, request, categoria_id):
-        categoria = get_object_or_404(Categoria, pk=categoria_id)
+        try:
+            with transaction.atomic():
+                # Lock categoria to prevent concurrent modifications
+                categoria = get_object_or_404(Categoria.objects.select_for_update(), pk=categoria_id)
 
-        categoria_nombre = categoria.nombre
-        categoria.delete()
-        messages.success(request, f"Categoría {categoria_nombre} eliminada correctamente.")
+                categoria_nombre = categoria.nombre
+                categoria.delete()  # Cascade is SET_NULL, safe but should be in transaction
+                messages.success(request, f"Categoría {categoria_nombre} eliminada correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar la categoría: {str(e)}")
+            return redirect("categoria_list")
+
         return redirect("categoria_list")
 
 
@@ -722,20 +757,24 @@ class OrderManagementDetailView(View):
     def post(self, request, codigo):
         from orders.models import Order
 
-        order = get_object_or_404(Order, codigo_pedido=codigo)
+        with transaction.atomic():
+            # Use select_for_update to prevent concurrent status updates
+            order = get_object_or_404(Order.objects.select_for_update(), codigo_pedido=codigo)
 
-        new_status = request.POST.get("estado")
-        if new_status and new_status in dict(Order.ESTADO_CHOICES):
-            old_status = order.estado
-            order.estado = new_status
-            order.save()
+            new_status = request.POST.get("estado")
+            if new_status and new_status in dict(Order.ESTADO_CHOICES):
+                old_status = order.estado
 
-            if old_status != new_status:
-                send_order_status_update_email(order)
-
-            messages.success(request, f"Estado del pedido actualizado a {order.get_estado_display()}")
-        else:
-            messages.error(request, "Estado inválido")
+                # Only update if status actually changed
+                if old_status != new_status:
+                    order.estado = new_status
+                    order.save()
+                    send_order_status_update_email(order)
+                    messages.success(request, f"Estado del pedido actualizado a {order.get_estado_display()}")
+                else:
+                    messages.info(request, "El estado no ha cambiado.")
+            else:
+                messages.error(request, "Estado inválido")
 
         return redirect("order_management_detail", codigo=codigo)
 
