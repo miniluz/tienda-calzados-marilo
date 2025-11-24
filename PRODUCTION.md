@@ -124,10 +124,10 @@ DELIVERY_COST=5.0
 CHECKOUT_FORM_WINDOW_MINUTES=10
 ```
 
-**PAYMENT_WINDOW_MINUTES** establece cuántos minutos tiene el cliente para completar el pago una vez que ha enviado sus datos. Si no completa el pago en este plazo, el pedido se marca como expirado y el stock se libera (por defectom 5):
+**PAYMENT_WINDOW_MINUTES** establece cuántos minutos tiene el cliente para completar el pago una vez que ha enviado sus datos. Si no completa el pago en este plazo, el pedido se marca como expirado y el stock se libera. Debe ser de más de 30 minutos (por defecto 31):
 
 ```
-PAYMENT_WINDOW_MINUTES=5
+PAYMENT_WINDOW_MINUTES=31
 ```
 
 **CLEANUP_CRON_MINUTES** define cada cuántos minutos el sistema ejecutará una tarea automática de limpieza que elimina pedidos expirados y libera el stock reservado (por defecto, 5):
