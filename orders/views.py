@@ -1,11 +1,11 @@
-from decimal import Decimal
 import os
-import stripe
+from decimal import Decimal
 
+import stripe
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -606,7 +606,10 @@ class CheckoutPaymentView(View):
                                 }
                             ],
                             mode="payment",
-                            metadata={"order_id": str(order.id), "codigo_pedido": order.codigo_pedido},
+                            metadata={
+                                "order_id": str(order.id),
+                                "codigo_pedido": order.codigo_pedido,
+                            },
                             expires_at=expires_at,
                             # Include the Checkout Session id so we can retrieve status on user return
                             success_url=(
@@ -667,6 +670,7 @@ class CheckoutPaymentView(View):
 class StripeWebhookView(View):
     """Endpoint to receive Stripe webhooks and mark orders as paid when appropriate."""
 
+    @transaction.atomic
     def post(self, request):
         payload = request.body
         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
@@ -702,7 +706,8 @@ class StripeWebhookView(View):
                         order.save()
                         # send confirmation email asynchronously if desired
                         send_order_confirmation_email(order)
-            except Order.DoesNotExist:
+            except (ValueError, TypeError, Order.DoesNotExist):
+                # Order not found, skip gracefully (idempotent)
                 pass
 
         return JsonResponse({"received": True})
@@ -711,11 +716,12 @@ class StripeWebhookView(View):
 class StripeReturnView(View):
     """Handle user redirect from Stripe Checkout.
 
-    This view only checks if the order has been marked as paid by the webhook.
-    It does NOT call Stripe API or mark orders as paid itself.
+    Hybrid approach for reliability:
+    1. Try to check Stripe API directly for immediate feedback (if session_id available)
+    2. Fall back to webhook-only approach if API call fails
 
-    The webhook (StripeWebhookView) is responsible for marking orders as paid.
-    This view just polls the database and redirects when payment is confirmed.
+    This ensures users get immediate success confirmation when possible,
+    while maintaining webhook as the authoritative payment processor.
     """
 
     def get(self, request):
@@ -735,7 +741,59 @@ class StripeReturnView(View):
             except Order.DoesNotExist:
                 order = None
 
-        # If order is paid (webhook has already processed it), redirect to success
+        # If we have a session_id from Stripe, check Stripe API directly for immediate feedback
+        session_id = request.GET.get("session_id")
+        stripe_secret = os.getenv("STRIPE_SECRET_KEY")
+        if session_id and stripe_secret:
+            try:
+                stripe.api_key = stripe_secret
+                checkout_session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent"])
+                # Retrieve metadata that we set when creating the session
+                metadata = checkout_session.get("metadata") or {}
+                # payment_status can be 'paid' when succeeded
+                payment_status = checkout_session.get("payment_status")
+
+                # Try to find order from metadata if not available from session
+                if not order:
+                    order_id_meta = metadata.get("order_id")
+                    if order_id_meta:
+                        try:
+                            order = Order.objects.get(id=int(order_id_meta))
+                        except Order.DoesNotExist:
+                            order = None
+
+                # If Stripe reports the session as paid, mark the order paid and redirect to success
+                if payment_status == "paid":
+                    if order and not order.pagado:
+                        with transaction.atomic():
+                            # Use select_for_update to prevent race conditions with webhook
+                            order_locked = Order.objects.select_for_update().get(id=order.id)
+                            if not order_locked.pagado:
+                                order_locked.pagado = True
+                                order_locked.save()
+                                send_order_confirmation_email(order_locked)
+                        order.refresh_from_db()
+
+                    # Clear the checkout session markers
+                    if "checkout_order_id" in request.session:
+                        try:
+                            del request.session["checkout_order_id"]
+                        except KeyError:
+                            pass
+                    if "checkout_descuento" in request.session:
+                        try:
+                            del request.session["checkout_descuento"]
+                        except KeyError:
+                            pass
+
+                    if order:
+                        return redirect("orders:order_success", codigo=order.codigo_pedido)
+
+            except Exception:
+                # If Stripe API call fails, fall back to webhook-only approach below
+                pass
+
+        # Check if order is already paid (by webhook or above API call)
         if order and order.pagado:
             # Clear the checkout session markers
             if "checkout_order_id" in request.session:
@@ -754,6 +812,41 @@ class StripeReturnView(View):
         # The page will reload and check again until webhook marks order as paid
         context = {"order": order}
         return render(request, "orders/validating.html", context)
+
+    @transaction.atomic
+    def post(self, request):
+        # Validate that the POST comes from Stripe using webhook secret
+        sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        if not webhook_secret or not sig_header:
+            return HttpResponseForbidden("Missing or invalid signature")
+
+        payload = request.body
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        except Exception:
+            return HttpResponseForbidden("Invalid signature")
+
+        data_obj = event.get("data", {}).get("object", {})
+        metadata = data_obj.get("metadata") or {}
+        order_id = metadata.get("order_id")
+
+        if order_id:
+            try:
+                # Use select_for_update() to prevent race conditions
+                order = Order.objects.select_for_update().get(id=int(order_id))
+                if not order.pagado:
+                    order.pagado = True
+                    order.save()
+                    send_order_confirmation_email(order)
+                return redirect("orders:order_success", codigo=order.codigo_pedido)
+            except (ValueError, TypeError):
+                # Invalid order_id format
+                return HttpResponse(status=400)
+            except Order.DoesNotExist:
+                return HttpResponse(status=404)
+
+        return HttpResponse(status=400)
 
 
 class StripeCancelView(View):
