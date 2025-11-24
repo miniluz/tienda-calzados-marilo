@@ -30,7 +30,9 @@ SECRET_KEY = envConfig.DJANGO_SECRET_KEY
 DEBUG = envConfig.DJANGO_DEBUG
 
 ALLOWED_HOSTS = envConfig.ALLOWED_HOSTS if envConfig.ALLOWED_HOSTS != [""] else [".localhost", "127.0.0.1", "[::1]"]
-
+CSRF_TRUSTED_ORIGINS = (
+    envConfig.CSRF_TRUSTED_ORIGINS if envConfig.CSRF_TRUSTED_ORIGINS != [""] else ["http://localhost:8000"]
+)
 
 # Application definition
 
@@ -141,6 +143,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Media files (User-uploaded content)
 MEDIA_URL = "/media/"
