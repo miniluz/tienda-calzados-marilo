@@ -255,6 +255,30 @@ class StripeReturnViewTests(TestCase):
         self.order.refresh_from_db()
         self.assertTrue(self.order.pagado)
 
+    def test_return_webhook_only_path_no_session_id(self):
+        """Test webhook-only path: no session_id, order paid by webhook, user refreshes"""
+        # Simulate webhook marking order as paid
+        self.order.pagado = True
+        self.order.save()
+
+        # Set session (user has valid checkout session)
+        session = self.client.session
+        session["checkout_order_id"] = self.order.id
+        session["checkout_descuento"] = "5.00"
+        session.save()
+
+        # User returns without session_id parameter (e.g., page refresh or webhook-only flow)
+        response = self.client.get(self.return_url)
+
+        # Should redirect to success immediately (order already paid by webhook)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("success", response.url)
+        self.assertIn(self.order.codigo_pedido, response.url)
+
+        # Session should be cleared
+        self.assertNotIn("checkout_order_id", self.client.session)
+        self.assertNotIn("checkout_descuento", self.client.session)
+
 
 class StripeAPIFailureTests(TestCase):
     """Test handling of Stripe API failures"""
