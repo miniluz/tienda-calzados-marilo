@@ -38,6 +38,7 @@ class ManagementConfig(AppConfig):
 
     def _initialize_default_admin(self):
         from django.contrib.auth.models import User
+        from django.db import IntegrityError, transaction
         from tienda_calzados_marilo.env import getEnvConfig
 
         env_config = getEnvConfig()
@@ -55,10 +56,19 @@ class ManagementConfig(AppConfig):
             admin_user.is_superuser = True
             admin_user.save()
         except User.DoesNotExist:
-            User.objects.create_superuser(
-                username=admin_email,
-                email=admin_email,
-                password=admin_password,
-                first_name="Admin",
-                last_name="Sistema",
-            )
+            try:
+                with transaction.atomic():
+                    User.objects.create_superuser(
+                        username=admin_email,
+                        email=admin_email,
+                        password=admin_password,
+                        first_name="Admin",
+                        last_name="Sistema",
+                    )
+            except IntegrityError:
+                try:
+                    admin_user = User.objects.get(username=admin_email)
+                    admin_user.set_password(admin_password)
+                    admin_user.save()
+                except User.DoesNotExist:
+                    pass

@@ -10,6 +10,7 @@ class EnvConfig(NamedTuple):
     DJANGO_DEBUG: bool
     DJANGO_SECRET_KEY: str
     ALLOWED_HOSTS: list[str]
+    CSRF_TRUSTED_ORIGINS: list[str]
     ADMIN_PASSWORD: str
     USE_SQLITE: bool
     POSTGRES_HOST: str
@@ -98,6 +99,7 @@ def getEnvConfig() -> EnvConfig:
         DJANGO_DEBUG=getBoolFromEnv("DJANGO_DEBUG"),
         DJANGO_SECRET_KEY=getFromEnv("DJANGO_SECRET_KEY"),
         ALLOWED_HOSTS=getListFromEnv("ALLOWED_HOSTS"),
+        CSRF_TRUSTED_ORIGINS=getListFromEnv("CSRF_TRUSTED_ORIGINS"),
         ADMIN_PASSWORD=getFromEnv("ADMIN_PASSWORD"),
         USE_SQLITE=getBoolFromEnv("USE_SQLITE"),
         POSTGRES_HOST=getFromEnv("POSTGRES_HOST", use_sqlite),

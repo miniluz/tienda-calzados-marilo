@@ -1,0 +1,96 @@
+services:
+  db:
+    image: postgres:17.6
+    container_name: tienda-marilo-db-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-marilo_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marilo_password}
+      POSTGRES_DB: ${POSTGRES_DB:-tienda_marilo}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - tienda-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-marilo_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tienda-marilo-web-prod
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      USE_SQLITE: ${USE_SQLITE:-}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-marilo_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marilo_password}
+      POSTGRES_DB: ${POSTGRES_DB:-tienda_marilo}
+      TAX_RATE: ${TAX_RATE:-21.0}
+      DELIVERY_COST: ${DELIVERY_COST:-5.0}
+      CHECKOUT_FORM_WINDOW_MINUTES: ${CHECKOUT_FORM_WINDOW_MINUTES:-10}
+      PAYMENT_WINDOW_MINUTES: ${PAYMENT_WINDOW_MINUTES:-5}
+      CLEANUP_CRON_MINUTES: ${CLEANUP_CRON_MINUTES:-5}
+      USE_CONSOLE_MAIL: ${USE_CONSOLE_MAIL:-true}
+      WEBSITE_URL: ${WEBSITE_URL:-http://localhost:8000}
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    networks:
+      - tienda-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: tienda-marilo-nginx-prod
+    depends_on:
+      - web
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+    ports:
+      - "8000:80"
+    networks:
+      - tienda-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data_prod:
+  static_volume:
+  media_volume:
+
+networks:
+  tienda-network:
+    driver: bridge
