@@ -152,9 +152,9 @@
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                 {% if not user.is_staff %}
                                     <li><a class="dropdown-item" href="{% url 'profile' %}">Mi Perfil</a></li>
-                                    <li><a class="dropdown-item" href="{% url 'orders:order_list' %}">Mis Pedidos</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                 {% endif %}
+                                <li><a class="dropdown-item" href="{% url 'orders:order_list' %}">Mis Pedidos</a></li>
                                 <li>
                                     <form method="post" action="{% url 'logout' %}" style="margin: 0;">
                                         {% csrf_token %}

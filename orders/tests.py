@@ -23,6 +23,7 @@ from orders.utils import (
     reserve_stock,
     restore_stock,
 )
+from tienda_calzados_marilo.env import getEnvConfig
 
 
 class OrderCodeGenerationTest(TestCase):
@@ -239,6 +240,9 @@ class CleanupExpiredOrdersTest(TestCase):
 
     def test_cleanup_expired_orders(self):
         """Should clean up expired unpaid orders"""
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
         # Create an expired unpaid order
         expired_order = Order.objects.create(
             codigo_pedido="EXPIRED123",
@@ -269,8 +273,8 @@ class CleanupExpiredOrdersTest(TestCase):
             total=200,
         )
 
-        # Make order old (25 minutes = beyond 20-minute reservation window)
-        expired_order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        # Make order old (beyond TTL reservation window)
+        expired_order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=ttl + 5)
         expired_order.save()
 
         # Run cleanup
@@ -1273,6 +1277,9 @@ class CleanupExpiredOrdersViewTest(TestCase):
         """Should display detailed stock restoration feedback"""
         from django.test import Client
 
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
         # Create expired order
         expired_order = Order.objects.create(
             codigo_pedido="EXPIRED123",
@@ -1299,7 +1306,7 @@ class CleanupExpiredOrdersViewTest(TestCase):
         )
 
         # Make order expired
-        expired_order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        expired_order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=ttl + 5)
         expired_order.save()
 
         # Login as staff and trigger cleanup
@@ -1321,6 +1328,9 @@ class CleanupExpiredOrdersViewTest(TestCase):
         """Should aggregate stock restoration from multiple orders"""
         from django.test import Client
 
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
         # Create first expired order
         order1 = Order.objects.create(
             codigo_pedido="EXPIRED1",
@@ -1341,7 +1351,7 @@ class CleanupExpiredOrdersViewTest(TestCase):
             ciudad_facturacion="Test City",
             codigo_postal_facturacion="12345",
         )
-        order1.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        order1.fecha_creacion = timezone.now() - timezone.timedelta(minutes=ttl + 5)
         order1.save()
 
         OrderItem.objects.create(
@@ -1369,7 +1379,7 @@ class CleanupExpiredOrdersViewTest(TestCase):
             ciudad_facturacion="Test City",
             codigo_postal_facturacion="12345",
         )
-        order2.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        order2.fecha_creacion = timezone.now() - timezone.timedelta(minutes=ttl + 5)
         order2.save()
 
         OrderItem.objects.create(

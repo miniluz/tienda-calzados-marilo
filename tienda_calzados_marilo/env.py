@@ -95,6 +95,10 @@ def getEnvConfig() -> EnvConfig:
     use_sqlite = getBoolFromEnv("USE_SQLITE")
     use_console_mail = getBoolFromEnv("USE_CONSOLE_MAIL")
 
+    payment_window_minutes = getIntFromEnv("PAYMENT_WINDOW_MINUTES", 31)
+    if payment_window_minutes <= 30:
+        raise ValueError("PAYMENT_WINDOW_MINUTES must be at least 30.")
+
     envConfig = EnvConfig(
         DJANGO_DEBUG=getBoolFromEnv("DJANGO_DEBUG"),
         DJANGO_SECRET_KEY=getFromEnv("DJANGO_SECRET_KEY"),
@@ -110,7 +114,7 @@ def getEnvConfig() -> EnvConfig:
         TAX_RATE=getFloatFromEnv("TAX_RATE", 21.0),
         DELIVERY_COST=getFloatFromEnv("DELIVERY_COST", 5.0),
         CHECKOUT_FORM_WINDOW_MINUTES=getIntFromEnv("CHECKOUT_FORM_WINDOW_MINUTES", 10),
-        PAYMENT_WINDOW_MINUTES=getIntFromEnv("PAYMENT_WINDOW_MINUTES", 5),
+        PAYMENT_WINDOW_MINUTES=payment_window_minutes,
         CLEANUP_CRON_MINUTES=getIntFromEnv("CLEANUP_CRON_MINUTES", 5),
         # Email configuration
         USE_CONSOLE_MAIL=use_console_mail,

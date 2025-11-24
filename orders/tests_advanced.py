@@ -22,6 +22,7 @@ from orders.utils import (
     reserve_stock,
     restore_stock,
 )
+from tienda_calzados_marilo.env import getEnvConfig
 
 
 class EdgeCaseStockTests(TestCase):
@@ -283,6 +284,9 @@ class ConcurrentPurchaseTests(TransactionTestCase):
 
     def test_concurrent_cleanup_prevents_double_stock_restoration(self):
         """Two simultaneous cleanups should not double-restore stock"""
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
         # Set stock to 10
         self.talla.stock = 10
         self.talla.save()
@@ -317,8 +321,8 @@ class ConcurrentPurchaseTests(TransactionTestCase):
             total=300,
         )
 
-        # Make order expired (25 minutes old)
-        order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        # Make order expired (TTL + 5 minutes old)
+        order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=ttl + 5)
         order.save()
 
         # Deduct stock to simulate reservation
@@ -372,8 +376,18 @@ class CleanupTests(TestCase):
         )
         self.talla = TallaZapato.objects.create(zapato=self.zapato, talla=42, stock=10)
 
-    def _create_order(self, codigo, pagado=False, minutes_old=25):
-        """Helper to create an order"""
+    def _create_order(self, codigo, pagado=False, minutes_old=None):
+        """Helper to create an order
+
+        Args:
+            codigo: Order code
+            pagado: Whether the order is paid
+            minutes_old: Age of order in minutes. If None, uses TTL + 5 to ensure expiration
+        """
+        if minutes_old is None:
+            env_config = getEnvConfig()
+            minutes_old = env_config.get_order_reservation_minutes() + 5
+
         order = Order.objects.create(
             codigo_pedido=codigo,
             metodo_pago="tarjeta",
@@ -398,9 +412,12 @@ class CleanupTests(TestCase):
         return order
 
     def test_cleanup_at_exact_boundary(self):
-        """Test cleanup at exact 20-minute boundary"""
-        # Order at exactly 20 minutes old
-        order = self._create_order("EXACT20", pagado=False, minutes_old=20)
+        """Test cleanup at exact TTL boundary"""
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
+        # Order at exactly TTL minutes old
+        order = self._create_order("EXACT_TTL", pagado=False, minutes_old=ttl)
         OrderItem.objects.create(
             pedido=order,
             zapato=self.zapato,
@@ -412,14 +429,17 @@ class CleanupTests(TestCase):
 
         result = cleanup_expired_orders()
 
-        # Should be cleaned up (>= 20 minutes)
+        # Should be cleaned up (>= TTL minutes)
         self.assertEqual(result["deleted_count"], 1)
 
     def test_cleanup_just_before_boundary(self):
-        """Test cleanup doesn't affect orders just under 20 minutes"""
-        # Order at 19 minutes 59 seconds old
+        """Test cleanup doesn't affect orders just under TTL"""
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
+        # Order at (TTL - 1 second) old
         order = Order.objects.create(
-            codigo_pedido="UNDER20",
+            codigo_pedido="UNDER_TTL",
             metodo_pago="tarjeta",
             pagado=False,
             subtotal=100,
@@ -437,7 +457,7 @@ class CleanupTests(TestCase):
             ciudad_facturacion="Test City",
             codigo_postal_facturacion="12345",
         )
-        order.fecha_creacion = timezone.now() - timezone.timedelta(seconds=1199)
+        order.fecha_creacion = timezone.now() - timezone.timedelta(seconds=ttl * 60 - 1)
         order.save()
 
         OrderItem.objects.create(
@@ -453,14 +473,15 @@ class CleanupTests(TestCase):
 
         # Should NOT be cleaned up
         self.assertEqual(result["deleted_count"], 0)
-        self.assertTrue(Order.objects.filter(codigo_pedido="UNDER20").exists())
+        self.assertTrue(Order.objects.filter(codigo_pedido="UNDER_TTL").exists())
 
     def test_cleanup_multiple_expired_orders(self):
         """Should clean up multiple expired orders in batch"""
         initial_stock = self.talla.stock
 
         for i in range(5):
-            order = self._create_order(f"EXPIRED{i}", pagado=False, minutes_old=25)
+            # Use default (None) to get TTL + 5 minutes old
+            order = self._create_order(f"EXPIRED{i}", pagado=False)
             OrderItem.objects.create(
                 pedido=order,
                 zapato=self.zapato,
@@ -494,9 +515,12 @@ class CleanupTests(TestCase):
 
     def test_cleanup_with_mixed_orders(self):
         """Should only clean up expired unpaid orders"""
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
         self._create_order("RECENT", pagado=False, minutes_old=5)
-        self._create_order("PAID", pagado=True, minutes_old=30)
-        expired = self._create_order("EXPIRED", pagado=False, minutes_old=25)
+        self._create_order("PAID", pagado=True, minutes_old=ttl + 10)
+        expired = self._create_order("EXPIRED", pagado=False)  # Uses TTL + 5
         OrderItem.objects.create(
             pedido=expired,
             zapato=self.zapato,
@@ -517,7 +541,7 @@ class CleanupTests(TestCase):
         """Should handle many expired orders efficiently"""
         # Create 100 expired orders
         for i in range(100):
-            order = self._create_order(f"EXP{i:03d}", pagado=False, minutes_old=25)
+            order = self._create_order(f"EXP{i:03d}", pagado=False)  # Uses TTL + 5
             OrderItem.objects.create(
                 pedido=order,
                 zapato=self.zapato,
@@ -534,7 +558,7 @@ class CleanupTests(TestCase):
 
     def test_concurrent_cleanup_idempotency(self):
         """Concurrent cleanups should not cause errors"""
-        order = self._create_order("EXPIRED", pagado=False, minutes_old=25)
+        order = self._create_order("EXPIRED", pagado=False)  # Uses TTL + 5
         OrderItem.objects.create(
             pedido=order,
             zapato=self.zapato,
@@ -675,13 +699,16 @@ class IntegrationCheckoutTests(TestCase):
 
     def test_checkout_with_expired_order(self):
         """Test handling of expired order during checkout"""
+        env_config = getEnvConfig()
+        ttl = env_config.get_order_reservation_minutes()
+
         # Start checkout
         self.client.get(reverse("orders:checkout_start"))
         order_id = self.client.session["checkout_order_id"]
 
-        # Manually expire the order (25 minutes = beyond 20-minute reservation)
+        # Manually expire the order (beyond TTL reservation)
         order = Order.objects.get(id=order_id)
-        order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=25)
+        order.fecha_creacion = timezone.now() - timezone.timedelta(minutes=ttl + 5)
         order.save()
 
         # Delete the expired order (simulate cleanup)
