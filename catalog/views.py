@@ -1,15 +1,12 @@
-from decimal import Decimal
-
 from django.contrib import messages
-from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django.views.generic import DetailView, ListView
 
-from orders.models import Order, OrderItem
-from orders.utils import calculate_order_prices, generate_order_code, reserve_stock
+from orders.utils import create_order_from_items
+from tienda_calzados_marilo.env import getEnvConfig
 
 from .forms import ZapatoSearchForm
 from .models import Zapato
@@ -116,82 +113,18 @@ class BuyNowView(View):
             }
         ]
 
-        prices = calculate_order_prices(cart_items)
+        # Use the unified order creation utility
+        order, success, error_message = create_order_from_items(cart_items, request.user, request)
 
-        max_retries = 5
-        order = None
-        for attempt in range(max_retries):
-            codigo_pedido = generate_order_code()
-            try:
-                with transaction.atomic():
-                    reserve_stock(cart_items)
-
-                    order = Order.objects.create(
-                        codigo_pedido=codigo_pedido,
-                        usuario=request.user if request.user.is_authenticated else None,
-                        subtotal=prices["subtotal"],
-                        impuestos=prices["impuestos"],
-                        coste_entrega=prices["coste_entrega"],
-                        total=prices["total"],
-                        metodo_pago="tarjeta",
-                        pagado=False,
-                        nombre="",
-                        apellido="",
-                        email="",
-                        telefono="",
-                        direccion_envio="",
-                        ciudad_envio="",
-                        codigo_postal_envio="",
-                        direccion_facturacion="",
-                        ciudad_facturacion="",
-                        codigo_postal_facturacion="",
-                    )
-                    break
-            except IntegrityError:
-                if attempt == max_retries - 1:
-                    messages.error(
-                        request,
-                        "No se pudo generar un código de pedido único. Por favor, inténtalo de nuevo.",
-                    )
-                    return redirect("catalog:zapato_detail", pk=pk)
-                continue
-            except ValueError as e:
-                messages.error(request, str(e))
-                return redirect("catalog:zapato_detail", pk=pk)
-
-        if order is None:
-            messages.error(request, "Error al crear el pedido.")
+        if not success:
+            messages.error(request, error_message)
             return redirect("catalog:zapato_detail", pk=pk)
 
-        try:
-            precio_unitario = Decimal(str(zapato.precioOferta)) if zapato.precioOferta else Decimal(str(zapato.precio))
-            cantidad = 1
+        env_config = getEnvConfig()
+        messages.success(
+            request,
+            f"Producto añadido al pedido. Los artículos están reservados durante {env_config.get_order_reservation_minutes()} minutos. "
+            "Procede con el pago para completar tu compra.",
+        )
 
-            descuento = Decimal("0.00")
-            if zapato.precioOferta:
-                precio_original = Decimal(str(zapato.precio))
-                descuento = (precio_original - precio_unitario) * cantidad
-
-            OrderItem.objects.create(
-                pedido=order,
-                zapato=zapato,
-                talla=talla,
-                cantidad=cantidad,
-                precio_unitario=precio_unitario,
-                total=precio_unitario * cantidad,
-                descuento=descuento,
-            )
-
-            request.session["checkout_order_id"] = order.id
-            request.session["checkout_descuento"] = str(prices["descuento"])
-
-            messages.success(
-                request,
-                "Producto añadido al pedido. Procede con el pago para completar tu compra.",
-            )
-
-            return redirect("orders:checkout_contact")
-
-        except ValueError as e:
-            messages.error(request, str(e))
-            return redirect("catalog:zapato_detail", pk=pk)
+        return redirect("orders:checkout_contact")
